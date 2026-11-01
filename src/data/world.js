@@ -27,7 +27,7 @@
     d: '인도 북동부 아삼주의 저지대 평원에서 나는 차입니다. 1820~30년대 영국인들이 이 지역에 자생하던 대엽종 차나무(아삼종)를 확인한 것이 인도 차 산업의 출발점이 되었습니다. 덥고 습한 기후의 대엽종 차라 맛이 진하고 몰티(맥아 같은)한 풍미가 강해, 우유와 잘 어울립니다. 생산 방식에 따라 오소독스와 CTC로 나뉩니다.',
     ar: ['맥아', '꿀', '말린 과일'], ts: ['진함', '묵직한 바디'], fp: 's3b3a3y5r1o1w1' });
   T('in-assam-ortho', '아삼 오소독스', 'Assam Orthodox', 'Assam Orthodox', 'black', IN, '아삼주', 'black-ortho', {
-    par: 'in-assam', kind: 'style', al: ['아삼 홀리프', 'Assam TGFOP', 'Assam Orthodox', '아삼 세컨드 플러시'], d: '잎을 시들리고 비비는 전통 방식(오소독스)으로 만든 아삼입니다. 잎 형태가 살아 있고, 금색 싹(팁)이 많을수록 꿀과 맥아 같은 단맛이 강합니다. 여름(세컨드 플러시) 아삼이 가장 높이 평가됩니다.', fp: 's3b2a3y4r1o1' });
+    par: 'in-assam', kind: 'style', al: ['아삼 홀리프', 'Assam TGFOP', 'Assam Orthodox'], d: '잎을 시들리고 비비는 전통 방식(오소독스)으로 만든 아삼입니다. 잎 형태가 살아 있고, 금색 싹(팁)이 많을수록 꿀과 맥아 같은 단맛이 강합니다. 여름(세컨드 플러시) 아삼이 가장 높이 평가됩니다.', fp: 's3b2a3y4r1o1' });
   T('in-assam-ctc', '아삼 CTC', 'Assam CTC', 'Assam CTC', 'black', IN, '아삼주', 'black-ctc', {
     par: 'in-assam', kind: 'style', al: ['CTC', 'Crush Tear Curl', '아삼 알갱이차'], d: '시들린 잎을 기계로 부수고(Crush) 찢고(Tear) 말아(Curl) 작은 알갱이로 만든 아삼입니다. 1930년대에 개발된 방식으로, 진하고 빠르게 우러나 티백과 인도의 짜이에 널리 쓰입니다.', lf: '작고 둥근 갈색 알갱이', lq: '짙은 적갈색', fp: 's2b3a4y5o1', tip: '우유와 설탕을 넣거나 짜이로 끓이는 용도에 잘 맞습니다.' });
   T('in-nilgiri', '닐기리 홍차', 'Nilgiri', 'Nilgiri Tea', 'black', IN, '타밀나두주 닐기리 구릉', 'black-ortho', {

@@ -1,7 +1,7 @@
 // 다록 데이터 점검 — node check-data.js
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ctx = { window: {}, console }; ctx.window = ctx; vm.createContext(ctx);
-['core', 'china-green-white-yellow', 'china-oolong-black-dark', 'taiwan-japan-korea', 'world', 'blends-tisanes', 'knowledge'].forEach((f) =>
+['core', 'china-green-white-yellow', 'china-oolong-black-dark', 'taiwan-japan-korea', 'world', 'blends-tisanes', 'expansion-1', 'expansion-2', 'knowledge'].forEach((f) =>
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'src/data', f + '.js'), 'utf8'), ctx, { filename: f }));
 vm.runInContext(fs.readFileSync(path.join(__dirname, 'src/brewing.js'), 'utf8'), ctx);
 const D = ctx.DAROK, problems = [];

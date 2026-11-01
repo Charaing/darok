@@ -2,7 +2,7 @@
 // 출력: dist/darok.html (브라우저에서 바로 여는 독립 실행 파일), dist/artifact.html (게시용 본문)
 const fs = require('fs'), path = require('path');
 const src = (p) => fs.readFileSync(path.join(__dirname, 'src', p), 'utf8');
-const scripts = ['data/core.js', 'data/china-green-white-yellow.js', 'data/china-oolong-black-dark.js', 'data/taiwan-japan-korea.js', 'data/world.js', 'data/blends-tisanes.js', 'data/knowledge.js', 'storage.js', 'brewing.js', 'app.js'];
+const scripts = ['data/core.js', 'data/china-green-white-yellow.js', 'data/china-oolong-black-dark.js', 'data/taiwan-japan-korea.js', 'data/world.js', 'data/blends-tisanes.js', 'data/expansion-1.js', 'data/expansion-2.js', 'data/knowledge.js', 'storage.js', 'brewing.js', 'app.js'];
 const safe = (s) => s.replace(/<\/script/gi, '<\\/script');
 const head = `<title>다록 茶錄</title>
 <meta name="claude:viewport-fit-sides" content="cover">
