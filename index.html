@@ -70,7 +70,7 @@ a { color: var(--deep); }
 @media (max-width: 860px) {
   .side { display: none; }
   .main { margin-left: 0; padding: 18px max(16px, env(safe-area-inset-right, 0px)) 110px max(16px, env(safe-area-inset-left, 0px)); }
-  .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+  .tabbar { display: grid; grid-template-columns: repeat(6, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--line);
     padding: 6px max(6px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px)); }
   .tabbar button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; font-size: 11px; color: var(--fg3); }
   .tabbar button[aria-current="page"] { color: var(--deep); font-weight: 600; }
@@ -355,6 +355,17 @@ details.adv[open] summary { margin-bottom: 12px; }
 .pend .stars .s { width: 28px; height: 28px; } .pend .stars .s .fill svg { width: 28px; height: 28px; } .pend .rateval { font-size: 20px; }
 .sharedbox { margin-top: 18px; padding: 12px 14px; border: 1px solid var(--line); border-left: 3px solid var(--brown); border-radius: 8px; background: var(--paper); max-width: 560px; }
 .sharednote { margin: -6px 0 6px 28px; font-size: 13px; color: var(--fg2); }
+
+.logrow { padding: 14px 0; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.lr-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lr-name { display: inline-flex; align-items: baseline; gap: 8px; text-align: left; min-width: 0; }
+.lr-name .dot { align-self: center; }
+.lr-name b { font-family: var(--f-display); font-weight: 600; font-size: 16.5px; }
+.lr-when { font-size: 12.5px; margin-right: auto; }
+.logrow .stars .s { width: 30px; height: 30px; } .logrow .stars .s .fill svg { width: 30px; height: 30px; } .logrow .rateval { font-size: 20px; }
+.lr-note { max-width: 640px; }
+.rq-hit { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 4px; border-bottom: 1px dashed var(--line); font-size: 14px; }
+@media (max-width: 860px) { .tabbar button { font-size: 10.5px; } }
 </style>
 </head>
 <body>
@@ -394,6 +405,7 @@ details.adv[open] summary { margin-bottom: 12px; }
       <button data-tab="home"><svg class="ico"><use href="#i-home"/></svg>홈</button>
       <button data-tab="catalog"><svg class="ico"><use href="#i-book"/></svg>차 도감</button>
       <button data-tab="mine"><svg class="ico"><use href="#i-cup"/></svg>나의 차</button>
+      <button data-tab="log"><svg class="ico"><use href="#i-edit"/></svg>기록</button>
       <button data-tab="knowledge"><svg class="ico"><use href="#i-scroll"/></svg>차 지식</button>
       <button data-tab="settings"><svg class="ico"><use href="#i-gear"/></svg>설정</button>
     </nav>
@@ -406,6 +418,7 @@ details.adv[open] summary { margin-bottom: 12px; }
   <button data-tab="home"><svg class="ico"><use href="#i-home"/></svg>홈</button>
   <button data-tab="catalog"><svg class="ico"><use href="#i-book"/></svg>차 도감</button>
   <button data-tab="mine"><svg class="ico"><use href="#i-cup"/></svg>나의 차</button>
+  <button data-tab="log"><svg class="ico"><use href="#i-edit"/></svg>기록</button>
   <button data-tab="knowledge"><svg class="ico"><use href="#i-scroll"/></svg>차 지식</button>
   <button data-tab="settings"><svg class="ico"><use href="#i-gear"/></svg>설정</button>
 </nav>
@@ -2522,7 +2535,7 @@ details.adv[open] summary { margin-bottom: 12px; }
 
   function render() {
     const v = S.view, root = $('#view');
-    const fn = { home: vHome, catalog: vCatalog, detail: vDetail, mine: vMine, knowledge: vKnowledge, article: vArticle, teaware: vTeaware, settings: vSettings, compare: vCompare }[v.name] || vHome;
+    const fn = { log: vLog, home: vHome, catalog: vCatalog, detail: vDetail, mine: vMine, knowledge: vKnowledge, article: vArticle, teaware: vTeaware, settings: vSettings, compare: vCompare }[v.name] || vHome;
     root.innerHTML = `<div class="view">${fn(v)}</div>`;
     const cur = tabOf(v.name);
     $$('[data-tab]').forEach((b) => b.setAttribute('aria-current', b.dataset.tab === cur ? 'page' : 'false'));
@@ -2530,6 +2543,7 @@ details.adv[open] summary { margin-bottom: 12px; }
     if (v.name === 'catalog') mountCatalog();
     if (v.name === 'detail') mountDetail();
     if (v.name === 'settings') mountSettings();
+    if (v.name === 'log') mountLog();
     document.title = (v.name === 'detail' && tea(v.id) ? tea(v.id).nameKo + ' — ' : '') + '다록 茶錄';
   }
 
@@ -2834,6 +2848,47 @@ details.adv[open] summary { margin-bottom: 12px; }
   function mountDetail() { /* 앵커 이동은 위임 처리 */ }
 
   /* ───────── 나의 차 ───────── */
+  /* ───────── 기록(후기 쓰기) ───────── */
+  function logRow(t, queue) {
+    const b = S.brewed[t.id], r = S.ratings[t.id];
+    const when = b ? (b.n ? new Date(b.t).toLocaleDateString('ko-KR') + ' 우림' + (b.n > 1 ? ' · ' + b.n + '회' : '') : new Date(b.t).toLocaleDateString('ko-KR') + ' 추가') : r ? new Date(r.t).toLocaleDateString('ko-KR') + ' 평가' : '';
+    return `<div class="logrow" data-logrow="${esc(t.id)}">
+      <div class="lr-head"><button data-open="${esc(t.id)}" class="lr-name"><span class="dot" style="background:${colorOf(t)}"></span><b>${esc(t.nameKo)}</b>${t.originalName ? `<span class="han faint" lang="zh">${esc(t.originalName)}</span>` : ''}</button>
+        <span class="faint lr-when">${esc(catOf(t).ko)} · ${esc(when)}</span>
+        ${queue ? `<button class="iconbtn" data-act="unqueue" data-id="${esc(t.id)}" aria-label="후기 목록에서 빼기" title="후기 목록에서 빼기">${I('close', 'sm')}</button>` : ''}</div>
+      <div data-rate-box="${esc(t.id)}">${starsInput(t.id)}</div>
+      <input type="text" class="lr-note" data-note="${esc(t.id)}" maxlength="500" value="${esc(S.notes[t.id] ? S.notes[t.id].text : '')}" placeholder="한 줄 후기 (입력 후 Enter 또는 다른 곳 클릭)" aria-label="${esc(t.nameKo)} 후기">
+    </div>`;
+  }
+  function vLog() {
+    const queue = ALL.filter((t) => S.brewed[t.id] && !S.brewed[t.id].skip && !S.ratings[t.id]).sort((a, b) => S.brewed[b.id].t - S.brewed[a.id].t);
+    const lq = (S.logQ || '').trim();
+    let all = ALL.filter((t) => S.ratings[t.id] || S.notes[t.id]);
+    if (lq) { const hit = new Set(search(lq, all).map((x) => x.t.id)); all = all.filter((t) => hit.has(t.id)); }
+    const lastT = (t) => Math.max((S.ratings[t.id] || { t: 0 }).t, (S.notes[t.id] || { t: 0 }).t);
+    all.sort((a, b) => lastT(b) - lastT(a));
+    return `<h1 style="font-size:28px">기록</h1><p class="muted" style="margin:6px 0 0">마신 차에 별점과 한 줄 후기를 바로 남기는 곳입니다. 모두 자동 저장${Sync.on() ? '되고 GitHub에도 올라갑니다' : '됩니다'}.</p>
+      <section class="sec"><div class="sec-h"><h2>후기 쓸 차 <span class="num faint" style="font-size:15px">${queue.length}</span></h2></div>
+        <div class="bigsearch" style="margin:0 0 6px"><label class="sr" for="rq">후기 쓸 차 추가</label>${I('search')}<input id="rq" type="search" placeholder="마신 차를 검색해 후기 목록에 추가" autocomplete="off"></div>
+        <div data-rq-results></div>
+        ${queue.length ? queue.map((t) => logRow(t, true)).join('') : '<div class="empty">후기 쓸 차가 없습니다. 타이머로 차를 우리거나 위에서 마신 차를 검색해 추가하십시오. 별점을 남기면 이 목록에서 "모든 기록"으로 옮겨집니다.</div>'}
+      </section>
+      <section class="sec"><div class="sec-h"><h2>모든 기록 <span class="num faint" style="font-size:15px">${ALL.filter((t) => S.ratings[t.id] || S.notes[t.id]).length}</span></h2></div>
+        <form class="bigsearch" data-form="logsearch" role="search" style="margin:0 0 6px"><label class="sr" for="lq">기록 검색</label>${I('search')}<input id="lq" type="search" value="${esc(lq)}" placeholder="기록한 차 검색" autocomplete="off"></form>
+        ${all.length ? all.map((t) => logRow(t, false)).join('') : `<div class="empty">${lq ? '검색 결과가 없습니다.' : '아직 별점이나 후기를 남긴 차가 없습니다.'}</div>`}
+      </section>`;
+  }
+  function mountLog() {
+    const rq = $('#rq'); if (!rq) return;
+    rq.addEventListener('input', debounce(() => {
+      const box = $('[data-rq-results]'); const q = rq.value.trim();
+      if (!q) { box.innerHTML = ''; return; }
+      const hits = search(q).slice(0, 6);
+      box.innerHTML = hits.length ? hits.map(({ t }) => { const inQ = S.brewed[t.id] && !S.brewed[t.id].skip && !S.ratings[t.id]; return `<div class="rq-hit"><span class="dot" style="background:${colorOf(t)}"></span><span style="min-width:0"><b>${esc(t.nameKo)}</b> <span class="faint">${esc(t.country)} · ${esc(catOf(t).ko)}</span></span>${S.ratings[t.id] ? '<span class="mine">★ ' + S.ratings[t.id].v.toFixed(1) + ' (기록 있음)</span>' : inQ ? '<span class="faint">목록에 있음</span>' : `<button class="btn" data-act="enqueue" data-id="${esc(t.id)}">${I('plus', 'sm')} 추가</button>`}</div>`; }).join('') : '<p class="faint" style="font-size:13px">찾는 차가 없습니다. <button style="color:var(--deep);text-decoration:underline" data-act="add" data-name="' + esc(q) + '">직접 추가하기</button></p>';
+    }, 120));
+    $$('.lr-note').forEach((el) => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } }));
+  }
+
   function vMine() {
     const st = stats(), rated = st.ids.map(tea);
     const fiveCount = st.ids.filter((id) => S.ratings[id].v === 5).length;
@@ -2860,9 +2915,9 @@ details.adv[open] summary { margin-bottom: 12px; }
         <div class="list">${collection()}</div></section>`;
   }
   function pendingHtml() {
-    const ps = ALL.filter((t) => S.brewed[t.id] && !S.ratings[t.id]).sort((a, b) => S.brewed[b.id].t - S.brewed[a.id].t).slice(0, 12);
+    const ps = ALL.filter((t) => S.brewed[t.id] && !S.brewed[t.id].skip && !S.ratings[t.id]).sort((a, b) => S.brewed[b.id].t - S.brewed[a.id].t).slice(0, 12);
     if (!ps.length) return '';
-    return `<section class="sec"><div class="sec-h"><h2>별점을 기다리는 차</h2><span class="faint" style="font-size:12px">타이머로 우려 본 차 ${ps.length}개</span></div>
+    return `<section class="sec"><div class="sec-h"><h2>별점을 기다리는 차</h2><button class="more" data-tab-go="log">기록 탭에서 모두 보기 ${I('chev', 'sm')}</button></div>
       ${ps.map((t) => `<div class="pend"><button data-open="${esc(t.id)}" style="text-align:left;min-width:0"><span class="dot" style="background:${colorOf(t)};display:inline-block;margin-right:8px"></span><b>${esc(t.nameKo)}</b> <span class="faint" style="font-size:12.5px">${new Date(S.brewed[t.id].t).toLocaleDateString('ko-KR')} 우림</span></button><div data-rate-box="${esc(t.id)}">${starsInput(t.id)}</div></div>`).join('')}</section>`;
   }
   function collection() {
@@ -3085,7 +3140,7 @@ details.adv[open] summary { margin-bottom: 12px; }
     }
     for (const [id, f] of Object.entries(o.favorites || {})) if (f && (D.byIdAll[id] || userIds.has(id))) out.favorites[id] = true;
     for (const [id, n] of Object.entries(o.notes || {})) if (n && typeof n.text === 'string' && (D.byIdAll[id] || userIds.has(id))) out.notes[id] = { text: n.text.slice(0, 500), t: +n.t || Date.now() };
-    for (const [id, b] of Object.entries(o.brewed || {})) if (b && (D.byIdAll[id] || userIds.has(id))) out.brewed[id] = { t: +b.t || Date.now(), n: Math.max(1, Math.min(9999, parseInt(b.n) || 1)) };
+    for (const [id, b] of Object.entries(o.brewed || {})) if (b && (D.byIdAll[id] || userIds.has(id))) out.brewed[id] = { t: +b.t || Date.now(), n: Math.max(0, Math.min(9999, parseInt(b.n) || 0)), skip: !!b.skip };
     let badU = 0;
     for (const [id, u] of Object.entries(o.userTeas || {})) {
       if (!u || typeof u !== 'object' || !u.nameKo || typeof u.nameKo !== 'string' || !/^u-/.test(id)) { badU++; continue; }
@@ -3331,6 +3386,8 @@ details.adv[open] summary { margin-bottom: 12px; }
         case 'cmp': { const i = S.compare.indexOf(id); if (i >= 0) S.compare.splice(i, 1); else { if (S.compare.length >= 3) { toast('비교는 최대 3개까지입니다.'); return; } S.compare.push(id); }
           $$(`[data-act="cmp"][data-id="${CSS.escape(id)}"]`).forEach((b) => { b.setAttribute('aria-pressed', S.compare.includes(id)); if (b.classList.contains('btn')) b.innerHTML = I('compare', 'sm') + (S.compare.includes(id) ? ' 비교 목록에 있음' : ' 비교에 추가'); });
           if (S.view.name === 'compare') render(); else renderCmpBar(); return; }
+        case 'enqueue': { const prev = S.brewed[id]; S.brewed[id] = { t: Date.now(), n: prev ? prev.n : 0 }; save.brewed(); toast('후기 쓸 차에 추가했습니다.'); const y = window.scrollY; render(); window.scrollTo(0, y); return; }
+        case 'unqueue': if (S.brewed[id]) { S.brewed[id].skip = true; save.brewed(); } { const row = $(`[data-logrow="${CSS.escape(id)}"]`); if (row) row.remove(); } toast('후기 목록에서 뺐습니다. 우린 기록은 남아 있습니다.'); return;
         case 'cmp-clear': S.compare = []; renderCmpBar(); $$('[data-act="cmp"]').forEach((b) => b.setAttribute('aria-pressed', 'false')); return;
         case 'compare': go('compare'); return;
         case 'back': back(); return;
@@ -3399,6 +3456,7 @@ details.adv[open] summary { margin-bottom: 12px; }
   }
   function onSubmit(e) {
     const f = e.target.closest('[data-form]'); if (!f) return;
+    if (f.dataset.form === 'logsearch') { e.preventDefault(); S.logQ = $('#lq').value; render(); const i = $('#lq'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } return; }
     if (f.dataset.form === 'homesearch') { e.preventDefault(); S.cat.q = $('#home-q').value; S.cat.sort = 'relevance'; go('catalog'); }
     if (f.dataset.form === 'catsearch') { e.preventDefault(); S.cat.q = $('#cat-q').value; renderList(true); $('#cat-q').blur(); }
   }
@@ -3528,11 +3586,11 @@ details.adv[open] summary { margin-bottom: 12px; }
     applyTheme(); rebuild();
     document.addEventListener('click', onClick); document.addEventListener('keydown', onKey); document.addEventListener('submit', onSubmit); document.addEventListener('change', onChange);
     const h = (location.hash || '').slice(1);
-    if (['catalog', 'mine', 'knowledge', 'settings'].includes(h)) S.view = { name: h };
+    if (['catalog', 'mine', 'log', 'knowledge', 'settings'].includes(h)) S.view = { name: h };
     else if (h && D.byIdAll[h]) S.view = { name: 'detail', id: h };
     render();
     Sync.loadShared();
-    window.addEventListener('hashchange', () => { const k = location.hash.slice(1); if (D.byIdAll[k]) go('detail', { id: k }); else if (['catalog', 'mine', 'knowledge', 'settings', 'home'].includes(k)) go(k); });
+    window.addEventListener('hashchange', () => { const k = location.hash.slice(1); if (D.byIdAll[k]) go('detail', { id: k }); else if (['catalog', 'mine', 'log', 'knowledge', 'settings', 'home'].includes(k)) go(k); });
     if (D.errors.length) console.warn('[다록 데이터 점검]', D.errors);
   }
   boot();
