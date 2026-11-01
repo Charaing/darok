@@ -233,12 +233,12 @@ mark { background: color-mix(in srgb, var(--star) 28%, transparent); color: inhe
 .saved.on { opacity: 1; }
 
 /* ── 나의 차 ── */
-.mystats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.mystats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
 .mystats > div { padding: 16px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; }
 .mystats small { color: var(--fg3); font-size: 12px; display: block; }
 .mystats b { font-family: var(--f-display); font-size: 26px; font-weight: 600; display: block; line-height: 1.3; overflow-wrap: anywhere; }
 .mystats b.t { font-size: 18px; }
-@media (max-width: 680px) { .mystats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 680px) { .mystats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mystats > div:last-child { grid-column: 1 / -1; } }
 .insights { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; max-width: 70ch; }
 .insights li { padding-left: 18px; position: relative; }
 .insights li::before { content: ""; position: absolute; left: 0; top: .7em; width: 8px; height: 1px; background: var(--brown); }
@@ -338,3 +338,8 @@ details.adv[open] summary { margin-bottom: 12px; }
 .cmp thead th { font-family: var(--f-display); font-size: 17px; font-weight: 600; }
 .cmp tbody th { color: var(--fg3); font-weight: 500; width: 110px; font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.timer-rate { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); width: 100%; max-width: 560px; display: flex; flex-direction: column; align-items: center; }
+.timer-rate .rateline { justify-content: center; }
+.pend { display: flex; justify-content: space-between; align-items: center; gap: 10px 16px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.pend b { font-family: var(--f-display); font-weight: 600; }
+.pend .stars .s { width: 28px; height: 28px; } .pend .stars .s .fill svg { width: 28px; height: 28px; } .pend .rateval { font-size: 20px; }

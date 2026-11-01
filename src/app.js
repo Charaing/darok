@@ -17,7 +17,7 @@
 
   /* ───────── 상태 ───────── */
   const S = {
-    ratings: {}, favorites: {}, userTeas: {}, settings: { theme: 'system', sound: true, method: '', brewEdits: {} },
+    ratings: {}, favorites: {}, userTeas: {}, brewed: {}, settings: { theme: 'system', sound: true, method: '', brewEdits: {} },
     compare: [], images: {},
     view: { name: 'home' }, stack: [],
     cat: { q: '', cats: new Set(), countries: new Set(), regions: new Set(), rated: 'all', minR: 0, fav: false, teaBrew: false, caf: 'all', kinds: 'all', sort: 'relevance', open: false },
@@ -26,6 +26,7 @@
   const save = {
     ratings: () => Store.set('ratings', S.ratings).catch(() => toast('저장하지 못했습니다. 브라우저 저장 공간을 확인하십시오.')),
     favorites: () => Store.set('favorites', S.favorites).catch(() => {}),
+    brewed: () => Store.set('brewed', S.brewed).catch(() => {}),
     userTeas: () => Store.set('userTeas', S.userTeas).catch(() => toast('저장하지 못했습니다.')),
     settings: () => Store.set('settings', S.settings).catch(() => {})
   };
@@ -460,21 +461,29 @@
     const byCat = {}, byCountry = {};
     rated.forEach((t) => { const k = catOf(t).ko; (byCat[k] = byCat[k] || { n: 0, sum: 0, c: accOf(t) }).n++; byCat[k].sum += S.ratings[t.id].v; byCountry[t.country] = (byCountry[t.country] || 0) + 1; });
     const mostCat = Object.entries(byCat).sort((a, b) => b[1].n - a[1].n)[0];
-    const tabs = [['rated', '평가한 차'], ['five', '5점'], ['four', '4점 이상'], ['fav', '즐겨찾기'], ['recent', '최근 평가'], ['unrated', '미평가'], ['all', '전체']];
+    const tabs = [['rated', '평가한 차'], ['five', '5점'], ['four', '4점 이상'], ['brewed', '우려 본 차'], ['fav', '즐겨찾기'], ['recent', '최근 평가'], ['unrated', '미평가'], ['all', '전체']];
     return `<h1 style="font-size:28px">나의 차</h1><p class="muted" style="margin:6px 0 20px">모든 통계는 이 기기에 저장된 내 별점에서 계산합니다.</p>
       <div class="mystats">
         <div><small>마셔 본 차</small><b class="num">${st.n}<span style="font-size:14px;color:var(--fg2)">종</span></b></div>
         <div><small>평균 별점</small><b class="num">${st.n ? st.avg.toFixed(2) : '—'}</b></div>
+        <div><small>우려 본 차</small><b class="num">${Object.keys(S.brewed).filter((id) => tea(id)).length}</b></div>
         <div><small>5점을 준 차</small><b class="num">${fiveCount}</b></div>
         <div><small>가장 높은 점수의 차</small><b class="t">${top ? `<button data-open="${esc(top.id)}" style="text-align:left">${esc(top.nameKo)} <span class="num" style="color:var(--star)">${S.ratings[top.id].v.toFixed(1)}</span></button>` : '—'}</b></div>
       </div>
       <section class="sec"><div class="sec-h"><h2>내 차 취향</h2>${st.n && st.n < 5 ? '<span class="faint" style="font-size:12px">기록이 5개 미만이라 경향은 참고만 하십시오</span>' : ''}</div>${insights(rated, byCat, mostCat, top)}</section>
       ${st.n ? `<section class="sec"><div class="sec-h"><h2>그래프</h2></div><div class="charts">${chartsHtml(rated, byCat, byCountry)}</div></section>` : ''}
+      ${pendingHtml()}
       <section class="sec"><div class="sec-h"><h2>새로 마셔 볼 차</h2></div>${recsHtml(rated)}</section>
       <section class="sec"><div class="sec-h"><h2>나의 컬렉션</h2>
         <label class="row" style="gap:6px;font-size:13px">정렬 <select id="mine-sort" data-mine-sort>${[['rating', '별점순'], ['name', '이름순'], ['country', '국가순'], ['recent', '최근순']].map(([k, l]) => `<option value="${k}" ${S.mine.sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
         <div class="chips" style="margin-bottom:8px">${tabs.map(([k, l]) => `<button class="chip" data-mine-tab="${k}" aria-pressed="${S.mine.tab === k}">${l}</button>`).join('')}</div>
         <div class="list">${collection()}</div></section>`;
+  }
+  function pendingHtml() {
+    const ps = ALL.filter((t) => S.brewed[t.id] && !S.ratings[t.id]).sort((a, b) => S.brewed[b.id].t - S.brewed[a.id].t).slice(0, 12);
+    if (!ps.length) return '';
+    return `<section class="sec"><div class="sec-h"><h2>별점을 기다리는 차</h2><span class="faint" style="font-size:12px">타이머로 우려 본 차 ${ps.length}개</span></div>
+      ${ps.map((t) => `<div class="pend"><button data-open="${esc(t.id)}" style="text-align:left;min-width:0"><span class="dot" style="background:${colorOf(t)};display:inline-block;margin-right:8px"></span><b>${esc(t.nameKo)}</b> <span class="faint" style="font-size:12.5px">${new Date(S.brewed[t.id].t).toLocaleDateString('ko-KR')} 우림</span></button><div data-rate-box="${esc(t.id)}">${starsInput(t.id)}</div></div>`).join('')}</section>`;
   }
   function collection() {
     let pool;
@@ -483,6 +492,7 @@
       case 'five': pool = ALL.filter((t) => r(t) && r(t).v === 5); break;
       case 'four': pool = ALL.filter((t) => r(t) && r(t).v >= 4); break;
       case 'fav': pool = ALL.filter((t) => S.favorites[t.id]); break;
+      case 'brewed': pool = ALL.filter((t) => S.brewed[t.id]).sort((a, b) => S.brewed[b.id].t - S.brewed[a.id].t); break;
       case 'recent': pool = ALL.filter(r).sort((a, b) => r(b).t - r(a).t).slice(0, 30); break;
       case 'unrated': pool = ALL.filter((t) => !r(t)); break;
       case 'all': pool = ALL.slice(); break;
@@ -494,8 +504,8 @@
       country: (a, b) => a.country.localeCompare(b.country, 'ko') || a.nameKo.localeCompare(b.nameKo, 'ko'),
       recent: (a, b) => ((r(b) || { t: 0 }).t - (r(a) || { t: 0 }).t)
     };
-    if (S.mine.tab !== 'recent') pool.sort(sorters[S.mine.sort]);
-    if (!pool.length) return `<div class="empty">${S.mine.tab === 'fav' ? '즐겨찾기한 차가 없습니다. 차 화면의 하트를 눌러 추가하십시오.' : '아직 해당하는 차가 없습니다.'}</div>`;
+    if (S.mine.tab !== 'recent' && S.mine.tab !== 'brewed') pool.sort(sorters[S.mine.sort]);
+    if (!pool.length) return `<div class="empty">${S.mine.tab === 'fav' ? '즐겨찾기한 차가 없습니다. 차 화면의 하트를 눌러 추가하십시오.' : S.mine.tab === 'brewed' ? '아직 타이머로 우린 차가 없습니다. 차 화면에서 "이 차 우리기"를 눌러 보십시오.' : '아직 해당하는 차가 없습니다.'}</div>`;
     const cap = pool.slice(0, 200);
     return cap.map((t) => itemRow(t)).join('') + (pool.length > 200 ? `<p class="faint" style="font-size:13px;margin-top:10px">${pool.length}개 중 200개를 표시했습니다. 전체 목록은 차 도감의 필터를 이용하십시오.</p>` : '');
   }
@@ -662,7 +672,7 @@
   async function buildBackup(withImg) {
     const images = {};
     if (withImg) for (const id of Object.keys(S.images)) images[id] = S.images[id];
-    return { app: 'darok', version: 1, exportedAt: new Date().toISOString(), ratings: S.ratings, favorites: S.favorites, userTeas: S.userTeas, settings: { theme: S.settings.theme, sound: S.settings.sound, method: S.settings.method, brewEdits: S.settings.brewEdits }, images };
+    return { app: 'darok', version: 1, exportedAt: new Date().toISOString(), ratings: S.ratings, favorites: S.favorites, brewed: S.brewed, userTeas: S.userTeas, settings: { theme: S.settings.theme, sound: S.settings.sound, method: S.settings.method, brewEdits: S.settings.brewEdits }, images };
   }
   function fileSheet(title, name, mime, text) {
     openSheet(`<div class="hd"><div><h2>${esc(title)}</h2><p class="muted" style="margin:0;font-size:13px">${esc(name)} · ${(new Blob([text]).size / 1024).toFixed(1)}KB</p></div><button class="iconbtn" data-act="close" aria-label="닫기">${I('close')}</button></div>
@@ -674,13 +684,13 @@
   }
   function csvOf() {
     const q = (s) => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
-    const rows = [['id', '이름', '원어', '분류', '국가', '지역', '별점', '평가일', '즐겨찾기', '사용자 추가'].map(q).join(',')];
-    ALL.filter((t) => S.ratings[t.id] || S.favorites[t.id]).forEach((t) => { const r = S.ratings[t.id]; rows.push([t.id, t.nameKo, t.originalName, catOf(t).ko, t.country, t.region, r ? r.v : '', r ? new Date(r.t).toISOString().slice(0, 10) : '', S.favorites[t.id] ? 'Y' : '', t.builtin ? '' : 'Y'].map(q).join(',')); });
+    const rows = [['id', '이름', '원어', '분류', '국가', '지역', '별점', '평가일', '즐겨찾기', '우린 횟수', '사용자 추가'].map(q).join(',')];
+    ALL.filter((t) => S.ratings[t.id] || S.favorites[t.id] || S.brewed[t.id]).forEach((t) => { const r = S.ratings[t.id]; rows.push([t.id, t.nameKo, t.originalName, catOf(t).ko, t.country, t.region, r ? r.v : '', r ? new Date(r.t).toISOString().slice(0, 10) : '', S.favorites[t.id] ? 'Y' : '', S.brewed[t.id] ? S.brewed[t.id].n : '', t.builtin ? '' : 'Y'].map(q).join(',')); });
     return '﻿' + rows.join('\r\n');
   }
   let pendingImport = null;
   function validateBackup(o) {
-    const errs = [], out = { ratings: {}, favorites: {}, userTeas: {}, images: {}, settings: null };
+    const errs = [], out = { ratings: {}, favorites: {}, brewed: {}, userTeas: {}, images: {}, settings: null };
     if (!o || typeof o !== 'object' || Array.isArray(o)) return { errs: ['JSON 최상위가 객체가 아닙니다.'] };
     if (o.app !== 'darok') errs.push('다록 백업 파일 표시(app: "darok")가 없습니다. 다른 앱의 파일일 수 있습니다.');
     let badR = 0, unknownR = 0;
@@ -692,6 +702,7 @@
       out.ratings[id] = { v, t: +r.t || Date.now() };
     }
     for (const [id, f] of Object.entries(o.favorites || {})) if (f && (D.byIdAll[id] || userIds.has(id))) out.favorites[id] = true;
+    for (const [id, b] of Object.entries(o.brewed || {})) if (b && (D.byIdAll[id] || userIds.has(id))) out.brewed[id] = { t: +b.t || Date.now(), n: Math.max(1, Math.min(9999, parseInt(b.n) || 1)) };
     let badU = 0;
     for (const [id, u] of Object.entries(o.userTeas || {})) {
       if (!u || typeof u !== 'object' || !u.nameKo || typeof u.nameKo !== 'string' || !/^u-/.test(id)) { badU++; continue; }
@@ -715,17 +726,17 @@
     const dupName = Object.values(out.userTeas).filter((u) => D.teas.some((t) => norm(t.nameKo) === norm(u.nameKo))).map((u) => u.nameKo);
     pendingImport = out;
     area.innerHTML = `<div class="preview"><b>복원 미리보기</b>${o.exportedAt ? ` <span class="faint">(${esc(String(o.exportedAt).slice(0, 10))} 백업)</span>` : ''}
-      <ul><li>별점 ${nR}개 — 지금과 다른 값 ${conflict}개, 같은 값 ${same}개</li><li>즐겨찾기 ${Object.keys(out.favorites).length}개</li><li>사용자 추가 차 ${nU}개 — 이미 있는 ID ${dupU}개${dupName.length ? `, 기본 도감과 이름이 같은 차: ${esc(dupName.join(', '))}` : ''}</li><li>사진 ${Object.keys(out.images).length}장</li>${out.settings ? '<li>설정 포함</li>' : ''}</ul>
+      <ul><li>별점 ${nR}개 — 지금과 다른 값 ${conflict}개, 같은 값 ${same}개</li><li>즐겨찾기 ${Object.keys(out.favorites).length}개</li><li>우려 본 차 ${Object.keys(out.brewed).length}개</li><li>사용자 추가 차 ${nU}개 — 이미 있는 ID ${dupU}개${dupName.length ? `, 기본 도감과 이름이 같은 차: ${esc(dupName.join(', '))}` : ''}</li><li>사진 ${Object.keys(out.images).length}장</li>${out.settings ? '<li>설정 포함</li>' : ''}</ul>
       ${errs.length ? `<p class="err" style="margin:8px 0 0">${errs.map(esc).join('<br>')}</p>` : ''}
       <div class="row" style="margin-top:12px"><button class="btn pri" data-act="import-merge">합치기 (백업 값 우선)</button><button class="btn" data-act="import-replace">모두 바꾸기</button><button class="btn ghost" data-act="import-cancel">취소</button></div></div>`;
   }
   async function applyImport(replace) {
     const o = pendingImport; if (!o) return;
-    if (replace) { S.ratings = {}; S.favorites = {}; S.userTeas = {}; for (const id of Object.keys(S.images)) await Store.del(id, 'images'); S.images = {}; }
-    Object.assign(S.ratings, o.ratings); Object.assign(S.favorites, o.favorites); Object.assign(S.userTeas, o.userTeas);
+    if (replace) { S.ratings = {}; S.favorites = {}; S.brewed = {}; S.userTeas = {}; for (const id of Object.keys(S.images)) await Store.del(id, 'images'); S.images = {}; }
+    Object.assign(S.ratings, o.ratings); Object.assign(S.favorites, o.favorites); Object.assign(S.brewed, o.brewed); Object.assign(S.userTeas, o.userTeas);
     for (const [id, img] of Object.entries(o.images)) { S.images[id] = img; await Store.set(id, img, 'images').catch(() => {}); }
     if (o.settings) { S.settings = Object.assign(S.settings, o.settings); applyTheme(); }
-    await Promise.all([save.ratings(), save.favorites(), save.userTeas(), save.settings()]);
+    await Promise.all([save.ratings(), save.favorites(), save.brewed(), save.userTeas(), save.settings()]);
     pendingImport = null; rebuild(); render(); toast('복원했습니다.');
   }
 
@@ -870,6 +881,8 @@
       <div class="msg" data-t="msg" aria-live="polite"></div>
       <div class="ctl"><button class="btn pri" data-t="play">${I('play', 'sm')} 시작</button><button class="btn" data-t="reset">${I('reset', 'sm')} 다시</button><button class="btn" data-t="next" hidden>다음 우림 ${I('chev', 'sm')}</button><button class="btn" data-t="finish">${I('check', 'sm')} 완료</button></div>
       <div class="stlist" data-t="list"></div>
+      <div class="timer-rate"><div class="eyebrow" style="text-align:center;margin-bottom:6px">마셔 본 뒤 별점</div><div data-rate-box="${esc(t.id)}">${starsInput(t.id)}</div>
+      <p class="disclaim" style="text-align:center;margin-top:6px" data-t="brewnote">${S.brewed[t.id] ? '나의 차의 "우려 본 차"에 들어 있습니다.' : '타이머를 시작하면 나의 차의 "우려 본 차"에 추가됩니다.'}</p></div>
       <p class="disclaim" style="text-align:center;max-width:460px">각 우림 시간을 눌러 초 단위로 바꿀 수 있습니다. 바꾼 시간은 이 차에 저장됩니다.</p>`;
     document.body.appendChild(el);
     const q = (k) => el.querySelector(`[data-t="${k}"]`);
@@ -892,7 +905,7 @@
     el.addEventListener('click', (e) => {
       const b = e.target.closest('[data-t]'); if (!b) return;
       const k = b.dataset.t;
-      if (k === 'play') { D.unlockAudio(); if (T.running) { T.pause(); b.innerHTML = I('play', 'sm') + ' 계속'; } else { if (T.remain <= 0) T.reset(); T.start(); q('msg').textContent = ''; b.innerHTML = I('pause', 'sm') + ' 일시정지'; } }
+      if (k === 'play') { D.unlockAudio(); if (!T.running) markBrewed(t.id, q); if (T.running) { T.pause(); b.innerHTML = I('play', 'sm') + ' 계속'; } else { if (T.remain <= 0) T.reset(); T.start(); q('msg').textContent = ''; b.innerHTML = I('pause', 'sm') + ' 일시정지'; } }
       if (k === 'reset') { T.reset(); q('play').innerHTML = I('play', 'sm') + ' 시작'; q('msg').textContent = ''; }
       if (k === 'next') { T.go(T.idx + 1); drawList(); q('next').hidden = true; q('msg').textContent = ''; T.start(); q('play').innerHTML = I('pause', 'sm') + ' 일시정지'; }
       if (k === 'finish' || k === 'close') closeTimer();
@@ -907,7 +920,14 @@
     el.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTimer(); });
     q('play').focus();
   }
-  function closeTimer() { if (T) T.destroy(); T = null; const el = $('#timer'); if (el) el.remove(); if (S.view.name === 'detail') { const y = window.scrollY; render(); window.scrollTo(0, y); } }
+  function markBrewed(id, q) {
+    if (T && T._marked) return; if (T) T._marked = true;
+    const prev = S.brewed[id]; S.brewed[id] = { t: Date.now(), n: (prev ? prev.n : 0) + 1 }; save.brewed();
+    const n = q && q('brewnote'); if (n) n.textContent = '나의 차의 "우려 본 차"에 추가했습니다. 다 마신 뒤 별을 눌러 기록하십시오.';
+  }
+  function closeTimer() {
+    const tid = T && T._marked && $('#timer [data-rate-box]') ? $('#timer [data-rate-box]').dataset.rateBox : null;
+    if (tid && !S.ratings[tid]) toast('나의 차에 추가했어요. 별점은 나의 차에서도 남길 수 있습니다.'); if (T) T.destroy(); T = null; const el = $('#timer'); if (el) el.remove(); if (S.view.name === 'detail') { const y = window.scrollY; render(); window.scrollTo(0, y); } }
 
   /* ───────── 테마 ───────── */
   function applyTheme() { const th = S.settings.theme; if (th === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', th); }
@@ -939,7 +959,7 @@
         case 'add': addSheet(null, act.dataset.name); return;
         case 'edit': addSheet(id); return;
         case 'delete-user': confirmSheet('사용자 추가 차 삭제', `"${esc(tea(id).nameKo)}"와(과) 이 차의 별점·사진을 삭제합니다. 되돌릴 수 없습니다.`, '삭제', async () => {
-          delete S.userTeas[id]; delete S.ratings[id]; delete S.favorites[id]; delete S.images[id]; S.compare = S.compare.filter((x) => x !== id);
+          delete S.userTeas[id]; delete S.ratings[id]; delete S.favorites[id]; delete S.brewed[id]; save.brewed(); delete S.images[id]; S.compare = S.compare.filter((x) => x !== id);
           await Promise.all([save.userTeas(), save.ratings(), save.favorites(), Store.del(id, 'images')]); rebuild(); toast('삭제했습니다.'); go('catalog', null, { replace: true }); }); return;
         case 'close': closeSheet(); return;
         case 'teaware': go('teaware'); return;
@@ -953,10 +973,10 @@
         case 'import-merge': applyImport(false); return;
         case 'import-replace': confirmSheet('모두 바꾸기', '지금 기기의 사용자 데이터를 지우고 백업 내용으로 바꿉니다.', '바꾸기', () => applyImport(true)); return;
         case 'import-cancel': pendingImport = null; $('[data-import-area]').innerHTML = ''; return;
-        case 'wipe': $('[data-wipe-area]').innerHTML = `<div class="preview"><p style="margin:0 0 8px">별점 ${Object.keys(S.ratings).length}개, 즐겨찾기 ${Object.keys(S.favorites).length}개, 추가한 차 ${Object.keys(S.userTeas).length}개, 사진 ${Object.keys(S.images).length}장을 지웁니다. 확인하려면 <b>삭제</b>라고 입력하십시오.</p><div class="row"><input type="text" id="wipe-in" style="max-width:160px" aria-label="확인 문구"><button class="btn danger" data-act="wipe-go">${I('trash', 'sm')} 지우기</button><button class="btn ghost" data-act="wipe-cancel">취소</button></div></div>`; $('#wipe-in').focus(); return;
+        case 'wipe': $('[data-wipe-area]').innerHTML = `<div class="preview"><p style="margin:0 0 8px">별점 ${Object.keys(S.ratings).length}개, 즐겨찾기 ${Object.keys(S.favorites).length}개, 우려 본 차 ${Object.keys(S.brewed).length}개, 추가한 차 ${Object.keys(S.userTeas).length}개, 사진 ${Object.keys(S.images).length}장을 지웁니다. 확인하려면 <b>삭제</b>라고 입력하십시오.</p><div class="row"><input type="text" id="wipe-in" style="max-width:160px" aria-label="확인 문구"><button class="btn danger" data-act="wipe-go">${I('trash', 'sm')} 지우기</button><button class="btn ghost" data-act="wipe-cancel">취소</button></div></div>`; $('#wipe-in').focus(); return;
         case 'wipe-cancel': $('[data-wipe-area]').innerHTML = ''; return;
         case 'wipe-go': if (($('#wipe-in').value || '').trim() !== '삭제') { toast('"삭제"라고 정확히 입력하십시오.'); return; }
-          Store.clearAll().then(() => { S.ratings = {}; S.favorites = {}; S.userTeas = {}; S.images = {}; S.compare = []; S.settings = { theme: 'system', sound: true, method: '', brewEdits: {} }; applyTheme(); rebuild(); render(); toast('사용자 데이터를 모두 지웠습니다.'); }); return;
+          Store.clearAll().then(() => { S.ratings = {}; S.favorites = {}; S.brewed = {}; S.userTeas = {}; S.images = {}; S.compare = []; S.settings = { theme: 'system', sound: true, method: '', brewEdits: {} }; applyTheme(); rebuild(); render(); toast('사용자 데이터를 모두 지웠습니다.'); }); return;
       }
     }
     if (open) {
@@ -1005,7 +1025,8 @@
   /* ───────── 시작 ───────── */
   async function boot() {
     await Store.init();
-    const [r, f, u, st] = await Promise.all([Store.get('ratings'), Store.get('favorites'), Store.get('userTeas'), Store.get('settings')]);
+    const [r, f, u, st, bw] = await Promise.all([Store.get('ratings'), Store.get('favorites'), Store.get('userTeas'), Store.get('settings'), Store.get('brewed')]);
+    S.brewed = bw && typeof bw === 'object' ? bw : {};
     S.ratings = r && typeof r === 'object' ? r : {}; S.favorites = f && typeof f === 'object' ? f : {};
     S.userTeas = {}; if (u && typeof u === 'object') for (const [id, x] of Object.entries(u)) S.userTeas[id] = sanitizeUserTea(Object.assign({}, x, { id }));
     if (st && typeof st === 'object') S.settings = Object.assign(S.settings, st, { brewEdits: st.brewEdits || {} });
