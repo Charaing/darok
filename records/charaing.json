@@ -3,7 +3,7 @@
  "kind": "shared-records",
  "version": 1,
  "owner": "Charaing",
- "updatedAt": "2026-11-01T07:43:52.592Z",
+ "updatedAt": "2026-11-01T07:44:17.224Z",
  "ratings": {
   "cn-tieluohan": {
    "v": 5,
@@ -20,6 +20,10 @@
   "cn-wuyi-rougui": {
    "v": 4.5,
    "t": 1793519028583
+  },
+  "cn-lapsang": {
+   "v": 4.5,
+   "t": 1793519053224
   }
  },
  "notes": {
@@ -38,6 +42,10 @@
   "cn-wuyi-rougui": {
    "text": "복숭아 육계, 복숭아향은 잘 안느껴지지만 탄배가 좋음",
    "t": 1793519027616
+  },
+  "cn-lapsang": {
+   "text": "치자꽃 정산소종",
+   "t": 1793519052268
   }
  },
  "brewed": {},
