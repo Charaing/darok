@@ -3,7 +3,7 @@
  "kind": "shared-records",
  "version": 1,
  "owner": "Charaing",
- "updatedAt": "2026-11-01T07:44:53.458Z",
+ "updatedAt": "2026-11-01T07:45:46.172Z",
  "ratings": {
   "cn-tieluohan": {
    "v": 5,
@@ -24,6 +24,10 @@
   "cn-lapsang": {
    "v": 4.5,
    "t": 1793519053224
+  },
+  "cn-dc-milanxiang": {
+   "v": 3.5,
+   "t": 1793519142170
   }
  },
  "notes": {
@@ -46,6 +50,10 @@
   "cn-lapsang": {
    "text": "치자꽃 정산소종, 무이암차들이랑 비슷한 탄배가 올라옴 맛있음",
    "t": 1793519089449
+  },
+  "cn-dc-milanxiang": {
+   "text": "봉황단총 밀란향 고급, 난초향이 자그나마 느껴짐",
+   "t": 1793519142098
   }
  },
  "brewed": {},
