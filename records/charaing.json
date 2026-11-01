@@ -3,7 +3,7 @@
  "kind": "shared-records",
  "version": 1,
  "owner": "Charaing",
- "updatedAt": "2026-11-01T07:42:56.960Z",
+ "updatedAt": "2026-11-01T07:43:08.105Z",
  "ratings": {
   "cn-tieluohan": {
    "v": 5,
@@ -26,6 +26,10 @@
   "cn-keemun": {
    "text": "기문향인지 그딴거 잘 모르겠고 잎이 너무 작아서 차를 마시는지 씹는지 모르겠음",
    "t": 1793518945036
+  },
+  "cn-baihao-yinzhen": {
+   "text": "잎이 귀엽게 생김 맛은 그냥 쏘쏘",
+   "t": 1793518984102
   }
  },
  "brewed": {},
