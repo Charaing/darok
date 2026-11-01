@@ -3,10 +3,12 @@
  "kind": "shared-records",
  "version": 1,
  "owner": "Charaing",
- "updatedAt": "2026-11-01T07:41:03.943Z",
+ "updatedAt": "2026-11-01T07:41:09.856Z",
  "ratings": {},
  "notes": {},
  "brewed": {},
- "favorites": {},
+ "favorites": {
+  "cn-fenghuang-dancong": true
+ },
  "userTeas": {}
 }
