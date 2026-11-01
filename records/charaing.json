@@ -3,15 +3,22 @@
  "kind": "shared-records",
  "version": 1,
  "owner": "Charaing",
- "updatedAt": "2026-11-01T07:41:30.395Z",
- "ratings": {},
- "notes": {},
- "brewed": {
-  "cn-dahongpao": {
-   "t": 1793518886394,
-   "n": 1
+ "updatedAt": "2026-11-01T07:41:45.896Z",
+ "ratings": {
+  "cn-tieluohan": {
+   "v": 5,
+   "t": 1793518901889
   }
  },
- "favorites": {},
+ "notes": {
+  "cn-tieluohan": {
+   "text": "이거 지린다이",
+   "t": 1793518901811
+  }
+ },
+ "brewed": {},
+ "favorites": {
+  "cn-fenghuang-dancong": true
+ },
  "userTeas": {}
 }
