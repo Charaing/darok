@@ -36,7 +36,7 @@
 
   /* ───────── 상태 ───────── */
   const S = {
-    ratings: {}, favorites: {}, userTeas: {}, brewed: {}, notes: {}, shared: null, settings: { theme: 'system', sound: true, method: '', brewEdits: {} },
+    ratings: {}, favorites: {}, userTeas: {}, brewed: {}, notes: {}, tomb: {}, shared: null, settings: { theme: 'system', sound: true, method: '', brewEdits: {} },
     compare: [], images: {},
     view: { name: 'home' }, stack: [],
     cat: { q: '', cats: new Set(), countries: new Set(), regions: new Set(), rated: 'all', minR: 0, fav: false, teaBrew: false, caf: 'all', kinds: 'all', sort: 'relevance', open: false },
@@ -129,7 +129,7 @@
     return h + `<span class="saved" data-saved="${esc(id)}">${I('check', 'sm')} 저장됨</span></div>`;
   }
   function setRating(id, v) {
-    if (v) S.ratings[id] = { v, t: Date.now() }; else delete S.ratings[id];
+    if (v) { S.ratings[id] = { v, t: Date.now() }; tombSet('ratings', id, false); } else { if (S.ratings[id]) tombSet('ratings', id, true); delete S.ratings[id]; }
     save.ratings();
     $$(`[data-rate-box="${CSS.escape(id)}"]`).forEach((b) => { b.innerHTML = starsInput(id); const s = $(`[data-saved="${CSS.escape(id)}"]`, b); if (s) { s.classList.add('on'); setTimeout(() => s.classList.remove('on'), 1400); } });
     $$(`[data-mine="${CSS.escape(id)}"]`).forEach((el) => (el.outerHTML = mineBadge(id)));
@@ -1012,7 +1012,7 @@
       switch (a) {
         case 'rate': setRating(id, +act.dataset.v); return;
         case 'unrate': setRating(id, 0); toast('별점을 삭제했습니다.'); return;
-        case 'fav': if (S.favorites[id]) delete S.favorites[id]; else S.favorites[id] = true; save.favorites();
+        case 'fav': if (S.favorites[id]) { delete S.favorites[id]; tombSet('favorites', id, true); } else { S.favorites[id] = Date.now(); tombSet('favorites', id, false); } save.favorites();
           $$(`[data-act="fav"][data-id="${CSS.escape(id)}"]`).forEach((b) => { b.setAttribute('aria-pressed', !!S.favorites[id]); if (b.classList.contains('btn')) b.innerHTML = I('heart', 'sm') + (S.favorites[id] ? ' 즐겨찾기됨' : ' 즐겨찾기'); }); return;
         case 'cmp': { const i = S.compare.indexOf(id); if (i >= 0) S.compare.splice(i, 1); else { if (S.compare.length >= 3) { toast('비교는 최대 3개까지입니다.'); return; } S.compare.push(id); }
           $$(`[data-act="cmp"][data-id="${CSS.escape(id)}"]`).forEach((b) => { b.setAttribute('aria-pressed', S.compare.includes(id)); if (b.classList.contains('btn')) b.innerHTML = I('compare', 'sm') + (S.compare.includes(id) ? ' 비교 목록에 있음' : ' 비교에 추가'); });
@@ -1030,7 +1030,7 @@
         case 'add': addSheet(null, act.dataset.name); return;
         case 'edit': addSheet(id); return;
         case 'delete-user': confirmSheet('사용자 추가 차 삭제', `"${esc(tea(id).nameKo)}"와(과) 이 차의 별점·사진을 삭제합니다. 되돌릴 수 없습니다.`, '삭제', async () => {
-          delete S.userTeas[id]; delete S.ratings[id]; delete S.favorites[id]; delete S.brewed[id]; save.brewed(); delete S.images[id]; S.compare = S.compare.filter((x) => x !== id);
+          ['userTeas', 'ratings', 'favorites', 'notes', 'brewed'].forEach((k) => { if (S[k][id]) tombSet(k, id, true); delete S[k][id]; }); save.brewed(); save.notes(); delete S.images[id]; S.compare = S.compare.filter((x) => x !== id);
           await Promise.all([save.userTeas(), save.ratings(), save.favorites(), Store.del(id, 'images')]); rebuild(); toast('삭제했습니다.'); go('catalog', null, { replace: true }); }); return;
         case 'close': closeSheet(); return;
         case 'teaware': go('teaware'); return;
@@ -1047,7 +1047,7 @@
         case 'wipe': $('[data-wipe-area]').innerHTML = `<div class="preview"><p style="margin:0 0 8px">별점 ${Object.keys(S.ratings).length}개, 즐겨찾기 ${Object.keys(S.favorites).length}개, 우려 본 차 ${Object.keys(S.brewed).length}개, 추가한 차 ${Object.keys(S.userTeas).length}개, 사진 ${Object.keys(S.images).length}장을 지웁니다. 확인하려면 <b>삭제</b>라고 입력하십시오.</p><div class="row"><input type="text" id="wipe-in" style="max-width:160px" aria-label="확인 문구"><button class="btn danger" data-act="wipe-go">${I('trash', 'sm')} 지우기</button><button class="btn ghost" data-act="wipe-cancel">취소</button></div></div>`; $('#wipe-in').focus(); return;
         case 'wipe-cancel': $('[data-wipe-area]').innerHTML = ''; return;
         case 'wipe-go': if (($('#wipe-in').value || '').trim() !== '삭제') { toast('"삭제"라고 정확히 입력하십시오.'); return; }
-          Store.clearAll().then(() => { S.ratings = {}; S.favorites = {}; S.brewed = {}; S.notes = {}; S.userTeas = {}; S.images = {}; S.compare = []; Sync.disconnect(); S.settings = { theme: 'system', sound: true, method: '', brewEdits: {} }; applyTheme(); rebuild(); render(); toast('사용자 데이터를 모두 지웠습니다.'); }); return;
+          Store.clearAll().then(() => { S.ratings = {}; S.favorites = {}; S.brewed = {}; S.notes = {}; S.tomb = {}; S.userTeas = {}; S.images = {}; S.compare = []; Sync.disconnect(); S.settings = { theme: 'system', sound: true, method: '', brewEdits: {} }; applyTheme(); rebuild(); render(); toast('사용자 데이터를 모두 지웠습니다.'); }); return;
       }
     }
     if (open) {
@@ -1092,7 +1092,7 @@
     if (f.dataset.form === 'catsearch') { e.preventDefault(); S.cat.q = $('#cat-q').value; renderList(true); $('#cat-q').blur(); }
   }
   function onChange(e) {
-    if (e.target.matches('[data-note]')) { const id = e.target.dataset.note, v = e.target.value.trim().slice(0, 500); if (v) S.notes[id] = { text: v, t: Date.now() }; else delete S.notes[id]; save.notes(); toast(v ? '메모를 저장했습니다.' : '메모를 지웠습니다.'); }
+    if (e.target.matches('[data-note]')) { const id = e.target.dataset.note, v = e.target.value.trim().slice(0, 500); if (v) { S.notes[id] = { text: v, t: Date.now() }; tombSet('notes', id, false); } else { if (S.notes[id]) tombSet('notes', id, true); delete S.notes[id]; } save.notes(); toast(v ? '메모를 저장했습니다.' : '메모를 지웠습니다.'); }
     if (e.target.matches('[data-sort]')) { S.cat.sort = e.target.value; renderList(true); }
     if (e.target.matches('[data-mine-sort]')) { S.mine.sort = e.target.value; const y = window.scrollY; render(); window.scrollTo(0, y); }
   }
@@ -1111,13 +1111,13 @@
     const validPath = (p) => /^[A-Za-z0-9_./-]+\.json$/.test(p) && !p.includes('..');
     function payload() {
       const c = cfg();
-      return { app: 'darok', kind: 'shared-records', version: 1, owner: c.name, updatedAt: new Date().toISOString(), ratings: S.ratings, notes: S.notes, brewed: S.brewed, favorites: S.favorites, userTeas: S.userTeas };
+      return { app: 'darok', kind: 'shared-records', version: 1, owner: c.name, updatedAt: new Date().toISOString(), ratings: S.ratings, notes: S.notes, brewed: S.brewed, favorites: S.favorites, userTeas: S.userTeas, deleted: S.tomb };
     }
     function setStatus(m) { status = m; const el = $('[data-sync-status]'); if (el) el.textContent = m; }
     async function push(force) {
       const c = cfg();
       if (!c.token || !validRepo(c.repo) || !validPath(c.path)) return;
-      const body = payload(); const cmp = JSON.stringify(Object.assign({}, body, { updatedAt: '' }));
+      const cmp = JSON.stringify(Object.assign({}, payload(), { updatedAt: '' }));
       if (!force && cmp === lastSent) return;
       if (busy) { schedule(); return; }
       busy = true; setStatus('GitHub에 올리는 중…');
@@ -1127,10 +1127,11 @@
         for (let attempt = 0; attempt < 2; attempt++) {
           let sha;
           const g = await fetch(url + '?ref=' + encodeURIComponent(c.branch), { headers: h, cache: 'no-store' });
-          if (g.ok) sha = (await g.json()).sha;
+          if (g.ok) { const j = await g.json(); sha = j.sha; try { mergeIntoLocal(JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(String(j.content || '').replace(/\s/g, '')), (ch) => ch.charCodeAt(0))))); } catch (e) { /* 읽을 수 없는 기록 파일은 합치지 않음 */ } }
           else if (g.status !== 404) throw new Error(g.status === 401 ? '토큰이 올바르지 않거나 만료되었습니다.' : g.status === 403 ? '토큰에 이 저장소의 Contents 쓰기 권한이 없습니다.' : '저장소를 읽지 못했습니다 (' + g.status + ').');
+          const body = payload();
           const p = await fetch(url, { method: 'PUT', headers: h, body: JSON.stringify(Object.assign({ message: '다록 기록 업데이트', content: b64(JSON.stringify(body, null, 1)), branch: c.branch }, sha ? { sha } : {})) });
-          if (p.ok) { lastSent = cmp; setStatus('마지막으로 올린 시각: ' + new Date().toLocaleTimeString('ko-KR') + ' · 사이트에 반영되기까지 1~2분 걸릴 수 있습니다.'); return true; }
+          if (p.ok) { lastSent = JSON.stringify(Object.assign({}, body, { updatedAt: '' })); setStatus('마지막으로 올린 시각: ' + new Date().toLocaleTimeString('ko-KR') + ' · 사이트에 반영되기까지 1~2분 걸릴 수 있습니다.'); return true; }
           if (p.status === 409 && attempt === 0) continue;
           throw new Error(p.status === 401 ? '토큰이 올바르지 않거나 만료되었습니다.' : p.status === 403 || p.status === 404 ? '토큰에 이 저장소의 Contents 쓰기 권한이 없거나 저장소 이름이 틀렸습니다.' : p.status === 422 ? '브랜치 이름이나 파일 경로를 확인하십시오.' : '올리지 못했습니다 (' + p.status + ').');
         }
@@ -1151,6 +1152,7 @@
           const o = await r.json(); if (!o || o.app !== 'darok' || o.kind !== 'shared-records') continue;
           const { out } = validateBackup(Object.assign({}, o, { app: 'darok' }), true);
           if (!out) continue;
+          if (cfg().token) mergeIntoLocal(o);
           S.shared = { owner: String(o.owner || '').slice(0, 40), updatedAt: String(o.updatedAt || ''), ratings: out.ratings, notes: out.notes, brewed: out.brewed, userTeas: out.userTeas };
           rebuild(); if (['home', 'mine', 'detail'].includes(S.view.name)) { const y = window.scrollY; render(); window.scrollTo(0, y); }
           return true;
@@ -1197,6 +1199,44 @@
     function disconnect() { const c = cfg(); c.token = ''; setCfg(c); lastSent = ''; status = ''; }
     return { schedule, push, loadShared, settingsHtml, action, disconnect, on: () => { const c = cfg(); return !!(c.token && c.auto); } };
   })();
+  function tombSet(k, id, on) {
+    S.tomb[k] = S.tomb[k] || {};
+    if (on) S.tomb[k][id] = Date.now(); else delete S.tomb[k][id];
+    Store.set('tomb', S.tomb).catch(() => {});
+  }
+  /* GitHub 기록(r)과 이 기기의 기록을 항목별로 합침: 더 최근에 바뀐 쪽이 이기고, 더 최근에 지운 항목은 지운 상태를 유지 */
+  function mergeIntoLocal(r) {
+    if (!r || typeof r !== 'object' || r.app !== 'darok') return false;
+    const before = JSON.stringify([S.ratings, S.notes, S.brewed, S.favorites, S.userTeas, S.tomb]);
+    const tR = r.deleted && typeof r.deleted === 'object' ? r.deleted : {};
+    const remoteTeas = r.userTeas && typeof r.userTeas === 'object' ? r.userTeas : {};
+    const ok = (id) => !!(D.byIdAll[id] || S.userTeas[id] || (remoteTeas[id] && /^u-/.test(id)));
+    const tombs = (k) => { const out = Object.assign({}, S.tomb[k] || {}); for (const [id, t] of Object.entries(tR[k] || {})) if (+t > (out[id] || 0)) out[id] = +t; return out; };
+    function mergeMap(k, L, Rm, tOf, sane) {
+      const tomb = tombs(k), out = {};
+      for (const id of new Set([...Object.keys(L || {}), ...Object.keys(Rm || {})])) {
+        if (!ok(id)) continue;
+        const a = L && L[id], b = Rm && Rm[id] != null ? sane(Rm[id], id) : null;
+        const c = a && b ? (tOf(b) > tOf(a) ? b : a) : (a || b);
+        if (!c || (tomb[id] || 0) >= tOf(c)) continue;
+        out[id] = c;
+      }
+      S.tomb[k] = tomb; return out;
+    }
+    const ts = (x) => +(x && x.t) || 0;
+    const userTeas = mergeMap('userTeas', S.userTeas, remoteTeas, (u) => +(u && u.createdAt) || 0, (u, id) => (u && typeof u.nameKo === 'string' && /^u-/.test(id) ? sanitizeUserTea(Object.assign({}, u, { id })) : null));
+    S.userTeas = userTeas;
+    S.ratings = mergeMap('ratings', S.ratings, r.ratings, ts, (x) => { const v = +(x && x.v); return v >= 0.5 && v <= 5 && Math.round(v * 2) === v * 2 ? { v, t: ts(x) } : null; });
+    S.notes = mergeMap('notes', S.notes, r.notes, ts, (x) => (x && typeof x.text === 'string' ? { text: x.text.slice(0, 500), t: ts(x) } : null));
+    S.brewed = mergeMap('brewed', S.brewed, r.brewed, ts, (x) => (x && typeof x === 'object' ? { t: ts(x), n: Math.max(0, Math.min(9999, parseInt(x.n) || 0)), skip: !!x.skip } : null));
+    S.favorites = mergeMap('favorites', S.favorites, r.favorites, (x) => (typeof x === 'number' ? x : x ? 1 : 0), (x) => (x ? (typeof x === 'number' ? x : 1) : null));
+    const changed = JSON.stringify([S.ratings, S.notes, S.brewed, S.favorites, S.userTeas, S.tomb]) !== before;
+    if (changed) {
+      Promise.all(['ratings', 'notes', 'brewed', 'favorites', 'userTeas', 'tomb'].map((k) => Store.set(k, S[k]))).catch(() => {});
+      rebuild(); if (!$('#timer') && !$('#sheet') && !(document.activeElement && /input|textarea/i.test(document.activeElement.tagName))) { const y = window.scrollY; render(); window.scrollTo(0, y); }
+    }
+    return changed;
+  }
   function sharedLine(id) {
     if (!S.shared) return '';
     const r = S.shared.ratings[id], n = S.shared.notes && S.shared.notes[id];
@@ -1210,6 +1250,7 @@
     const [r, f, u, st, bw] = await Promise.all([Store.get('ratings'), Store.get('favorites'), Store.get('userTeas'), Store.get('settings'), Store.get('brewed')]);
     S.brewed = bw && typeof bw === 'object' ? bw : {};
     const nt = await Store.get('notes'); S.notes = nt && typeof nt === 'object' ? nt : {};
+    const tb = await Store.get('tomb'); S.tomb = tb && typeof tb === 'object' ? tb : {};
     S.ratings = r && typeof r === 'object' ? r : {}; S.favorites = f && typeof f === 'object' ? f : {};
     S.userTeas = {}; if (u && typeof u === 'object') for (const [id, x] of Object.entries(u)) S.userTeas[id] = sanitizeUserTea(Object.assign({}, x, { id }));
     if (st && typeof st === 'object') S.settings = Object.assign(S.settings, st, { brewEdits: st.brewEdits || {} });

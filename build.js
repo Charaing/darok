@@ -34,7 +34,8 @@ const head = `<title>다록 茶錄</title>
 <style>${src('style.css')}</style>`;
 const body = src('body.html') + scripts.map((s) => `<script>/* ${s} */\n${safe(src(s))}</script>`).join('\n');
 fs.mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
-fs.writeFileSync(path.join(__dirname, 'dist', 'darok.html'), `<!doctype html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n${head}\n</head>\n<body>\n${body}\n</body>\n</html>\n`);
-fs.writeFileSync(path.join(__dirname, 'dist', 'artifact.html'), `${head}\n${body}\n`);
+const notice = '<!--\n' + fs.readFileSync(path.join(__dirname, 'NOTICE.txt'), 'utf8').trim() + '\n-->\n';
+fs.writeFileSync(path.join(__dirname, 'dist', 'darok.html'), `<!doctype html>\n${notice}<html lang="ko">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n${notice}${head}\n</head>\n<body>\n${notice}${body}\n${notice}</body>\n</html>\n`);
+fs.writeFileSync(path.join(__dirname, 'dist', 'artifact.html'), `${notice}${head}\n${body}\n`);
 fs.copyFileSync(path.join(__dirname, 'dist', 'darok.html'), path.join(__dirname, 'index.html'));
 console.log('built', (fs.statSync(path.join(__dirname, 'dist', 'darok.html')).size / 1024).toFixed(0) + 'KB');
