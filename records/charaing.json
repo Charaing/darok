@@ -3,20 +3,30 @@
  "kind": "shared-records",
  "version": 1,
  "owner": "Charaing",
- "updatedAt": "2026-11-01T07:42:05.613Z",
+ "updatedAt": "2026-11-01T07:42:29.037Z",
  "ratings": {
-  "cn-dahongpao": {
-   "v": 3,
-   "t": 1793518921612
+  "cn-tieluohan": {
+   "v": 5,
+   "t": 1793518901889
+  },
+  "cn-keemun": {
+   "v": 2,
+   "t": 1793518921322
   }
  },
- "notes": {},
- "brewed": {
-  "cn-dahongpao": {
-   "t": 1793518886394,
-   "n": 1
+ "notes": {
+  "cn-tieluohan": {
+   "text": "이거 지린다이",
+   "t": 1793518901811
+  },
+  "cn-keemun": {
+   "text": "기문향인지 그딴거 잘 모르겠고 잎이 너무 작아서 차를 마시는지 씹는지 모르겠음",
+   "t": 1793518945036
   }
  },
- "favorites": {},
+ "brewed": {},
+ "favorites": {
+  "cn-fenghuang-dancong": true
+ },
  "userTeas": {}
 }
