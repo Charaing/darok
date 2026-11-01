@@ -17,17 +17,18 @@
 
   /* ───────── 상태 ───────── */
   const S = {
-    ratings: {}, favorites: {}, userTeas: {}, brewed: {}, settings: { theme: 'system', sound: true, method: '', brewEdits: {} },
+    ratings: {}, favorites: {}, userTeas: {}, brewed: {}, notes: {}, shared: null, settings: { theme: 'system', sound: true, method: '', brewEdits: {} },
     compare: [], images: {},
     view: { name: 'home' }, stack: [],
     cat: { q: '', cats: new Set(), countries: new Set(), regions: new Set(), rated: 'all', minR: 0, fav: false, teaBrew: false, caf: 'all', kinds: 'all', sort: 'relevance', open: false },
     mine: { tab: 'rated', sort: 'rating' }
   };
   const save = {
-    ratings: () => Store.set('ratings', S.ratings).catch(() => toast('저장하지 못했습니다. 브라우저 저장 공간을 확인하십시오.')),
-    favorites: () => Store.set('favorites', S.favorites).catch(() => {}),
-    brewed: () => Store.set('brewed', S.brewed).catch(() => {}),
-    userTeas: () => Store.set('userTeas', S.userTeas).catch(() => toast('저장하지 못했습니다.')),
+    ratings: () => (Sync.schedule(), Store.set('ratings', S.ratings)).catch(() => toast('저장하지 못했습니다. 브라우저 저장 공간을 확인하십시오.')),
+    favorites: () => (Sync.schedule(), Store.set('favorites', S.favorites)).catch(() => {}),
+    brewed: () => (Sync.schedule(), Store.set('brewed', S.brewed)).catch(() => {}),
+    notes: () => (Sync.schedule(), Store.set('notes', S.notes)).catch(() => {}),
+    userTeas: () => (Sync.schedule(), Store.set('userTeas', S.userTeas)).catch(() => toast('저장하지 못했습니다.')),
     settings: () => Store.set('settings', S.settings).catch(() => {})
   };
 
@@ -53,7 +54,8 @@
     t._prov = (t.region || '').split(/[\s,·(]/)[0] || '';
   }
   function rebuild() {
-    ALL = D.teas.concat(Object.values(S.userTeas));
+    const sharedTeas = S.shared ? Object.values(S.shared.userTeas || {}).filter((u) => !S.userTeas[u.id]).map((u) => Object.assign({}, u, { sharedFrom: S.shared.owner || '공유 기록' })) : [];
+    ALL = D.teas.concat(Object.values(S.userTeas), sharedTeas);
     ALL.forEach(indexTea);
     D.byIdAll = {}; ALL.forEach((t) => (D.byIdAll[t.id] = t));
   }
@@ -197,6 +199,7 @@
         <p class="faint" style="font-size:12px;-webkit-line-clamp:unset">오늘 날짜로 정해지는 추천이라 같은 날에는 같은 차가 나옵니다.</p></div>
       <div class="cupwrap">${cupEl(t, 220, true)}</div>
     </section>
+    ${S.shared && Object.keys(S.shared.ratings || {}).length ? `<section class="sec"><div class="sec-h"><h2>${esc(S.shared.owner || '공유')}의 차 기록</h2><button class="more" data-shared-go="1">전체 보기 ${I('chev', 'sm')}</button></div><div class="statline"><div class="s"><b class="num">${Object.keys(S.shared.ratings).length}</b><span>별점 남긴 차</span></div><div class="s"><b class="num">${(Object.values(S.shared.ratings).reduce((a, r) => a + r.v, 0) / Object.keys(S.shared.ratings).length).toFixed(1)}</b><span>평균 별점</span></div><div class="s"><b class="num" style="font-size:16px">${S.shared.updatedAt ? esc(new Date(S.shared.updatedAt).toLocaleString('ko-KR')) : '—'}</b><span>마지막 업데이트</span></div></div></section>` : ''}
     <section class="sec"><div class="sec-h"><h2>나의 차 기록</h2><button class="more" data-tab-go="mine">전체 보기 ${I('chev', 'sm')}</button></div>
       ${st.n ? `<div class="statline"><div class="s"><b class="num">${st.n}</b><span>마셔 본 차</span></div><div class="s"><b class="num">${st.avg.toFixed(1)}</b><span>평균 별점</span></div><div class="s"><b class="num">${Object.keys(S.favorites).filter((id) => tea(id)).length}</b><span>즐겨찾기</span></div></div>`
         : `<div class="empty">아직 남긴 별점이 없습니다. 차를 찾아 상세 화면에서 별을 누르면 바로 기록됩니다.</div>`}
@@ -345,7 +348,7 @@
           ${mk && !['c', 'm'].includes(mk) ? `<button class="btn pri" data-act="brew" data-id="${esc(t.id)}" data-m="${mk}">${I('timer', 'sm')} 이 차 우리기</button>` : ''}
           <button class="btn" data-act="fav" data-id="${esc(t.id)}" aria-pressed="${fav}">${I('heart', 'sm')} ${fav ? '즐겨찾기됨' : '즐겨찾기'}</button>
           <button class="btn" data-act="cmp" data-id="${esc(t.id)}" aria-pressed="${cmp}">${I('compare', 'sm')} ${cmp ? '비교 목록에 있음' : '비교에 추가'}</button>
-          ${t.builtin ? '' : `<button class="btn" data-act="edit" data-id="${esc(t.id)}">${I('edit', 'sm')} 수정</button><button class="btn danger" data-act="delete-user" data-id="${esc(t.id)}">${I('trash', 'sm')} 삭제</button>`}
+          ${t.builtin || !S.userTeas[t.id] ? '' : `<button class="btn" data-act="edit" data-id="${esc(t.id)}">${I('edit', 'sm')} 수정</button><button class="btn danger" data-act="delete-user" data-id="${esc(t.id)}">${I('trash', 'sm')} 삭제</button>`}
         </div>
       </div>
       ${cupEl(t, 200, true)}
@@ -404,7 +407,9 @@
 
     <section class="dsec" id="d-rate">${no('rate', '나의 평가')}<div style="min-width:0">
       <div data-rate-box="${esc(t.id)}">${starsInput(t.id)}</div>
-      <p class="disclaim">별을 누르는 즉시 이 기기에 저장되고 나의 차 화면에 반영됩니다. 왼쪽 절반을 누르면 0.5점입니다.</p>
+      <label class="f" style="margin-top:16px;max-width:560px">한 줄 메모 (선택)<textarea id="note-${esc(t.id)}" data-note="${esc(t.id)}" maxlength="500" style="min-height:64px" placeholder="예: 두 번째 우림이 가장 좋았음">${esc(S.notes[t.id] ? S.notes[t.id].text : '')}</textarea></label>
+      <p class="disclaim">별점은 누르는 즉시, 메모는 입력란에서 벗어나면 저장됩니다. 왼쪽 절반을 누르면 0.5점입니다.${Sync.on() ? ' GitHub에 자동으로 올라갑니다.' : ''}</p>
+      ${sharedLine(t.id)}
     </div></section>
     </article>`;
   }
@@ -461,7 +466,7 @@
     const byCat = {}, byCountry = {};
     rated.forEach((t) => { const k = catOf(t).ko; (byCat[k] = byCat[k] || { n: 0, sum: 0, c: accOf(t) }).n++; byCat[k].sum += S.ratings[t.id].v; byCountry[t.country] = (byCountry[t.country] || 0) + 1; });
     const mostCat = Object.entries(byCat).sort((a, b) => b[1].n - a[1].n)[0];
-    const tabs = [['rated', '평가한 차'], ['five', '5점'], ['four', '4점 이상'], ['brewed', '우려 본 차'], ['fav', '즐겨찾기'], ['recent', '최근 평가'], ['unrated', '미평가'], ['all', '전체']];
+    const tabs = [['rated', '평가한 차'], ['five', '5점'], ['four', '4점 이상'], ['brewed', '우려 본 차'], ['fav', '즐겨찾기'], ['shared', '공유된 기록'], ['recent', '최근 평가'], ['unrated', '미평가'], ['all', '전체']];
     return `<h1 style="font-size:28px">나의 차</h1><p class="muted" style="margin:6px 0 20px">모든 통계는 이 기기에 저장된 내 별점에서 계산합니다.</p>
       <div class="mystats">
         <div><small>마셔 본 차</small><b class="num">${st.n}<span style="font-size:14px;color:var(--fg2)">종</span></b></div>
@@ -493,6 +498,7 @@
       case 'four': pool = ALL.filter((t) => r(t) && r(t).v >= 4); break;
       case 'fav': pool = ALL.filter((t) => S.favorites[t.id]); break;
       case 'brewed': pool = ALL.filter((t) => S.brewed[t.id]).sort((a, b) => S.brewed[b.id].t - S.brewed[a.id].t); break;
+      case 'shared': { const sr = (S.shared && S.shared.ratings) || {}, sn = (S.shared && S.shared.notes) || {}; const sp = ALL.filter((t) => sr[t.id] || sn[t.id]).sort((a, b) => ((sr[b.id] || { v: 0 }).v - (sr[a.id] || { v: 0 }).v) || a.nameKo.localeCompare(b.nameKo, 'ko')); return sp.length ? sp.map((t) => itemRow(t) + `<p class="sharednote">${esc(S.shared.owner || '공유 기록')}${sr[t.id] ? ' ★ ' + sr[t.id].v.toFixed(1) : ''}${sn[t.id] ? ' — ' + esc(sn[t.id].text) : ''}</p>`).join('') : `<div class="empty">${S.shared ? '공유된 기록이 없습니다.' : '불러온 공유 기록이 없습니다. 설정에서 공유 기록을 다시 불러오십시오.'}</div>`; }
       case 'recent': pool = ALL.filter(r).sort((a, b) => r(b).t - r(a).t).slice(0, 30); break;
       case 'unrated': pool = ALL.filter((t) => !r(t)); break;
       case 'all': pool = ALL.slice(); break;
@@ -504,7 +510,7 @@
       country: (a, b) => a.country.localeCompare(b.country, 'ko') || a.nameKo.localeCompare(b.nameKo, 'ko'),
       recent: (a, b) => ((r(b) || { t: 0 }).t - (r(a) || { t: 0 }).t)
     };
-    if (S.mine.tab !== 'recent' && S.mine.tab !== 'brewed') pool.sort(sorters[S.mine.sort]);
+    if (!['recent', 'brewed'].includes(S.mine.tab)) pool.sort(sorters[S.mine.sort]);
     if (!pool.length) return `<div class="empty">${S.mine.tab === 'fav' ? '즐겨찾기한 차가 없습니다. 차 화면의 하트를 눌러 추가하십시오.' : S.mine.tab === 'brewed' ? '아직 타이머로 우린 차가 없습니다. 차 화면에서 "이 차 우리기"를 눌러 보십시오.' : '아직 해당하는 차가 없습니다.'}</div>`;
     const cap = pool.slice(0, 200);
     return cap.map((t) => itemRow(t)).join('') + (pool.length > 200 ? `<p class="faint" style="font-size:13px;margin-top:10px">${pool.length}개 중 200개를 표시했습니다. 전체 목록은 차 도감의 필터를 이용하십시오.</p>` : '');
@@ -626,6 +632,7 @@
         <div class="setrow"><div class="l"><b>사용자 데이터 전체 삭제</b><small>기본 차 도감은 그대로 남고, 내 기록만 지워집니다.</small></div><button class="btn danger" data-act="wipe">${I('trash', 'sm')} 전체 삭제</button></div>
         <div data-wipe-area></div>
       </section>
+      ${Sync.settingsHtml()}
       <section class="sec"><div class="sec-h"><h2>수록 현황과 데이터 점검</h2></div>
         <p style="font-size:14px">기본 도감 <b class="num">${D.teas.length}</b>개 항목 — 개별 차 ${q.kind.tea + (q.kind.brand || 0)}, 산지·계열 ${q.kind.family || 0}, 가공 방식·스타일 ${q.kind.style || 0}, 수확 시기·등급 ${q.kind.harvest || 0}, 향형 ${q.kind.aroma || 0}${q.kind.brand ? ' (상표 블렌드 ' + q.kind.brand + ' 포함)' : ''}. 사용자 추가 ${Object.keys(S.userTeas).length}개.</p>
         <p style="font-size:14px">분류별: ${Object.entries(q.cat).map(([k, n]) => `${esc(D.cats[k].ko)} ${n}`).join(' · ')}</p>
@@ -672,7 +679,7 @@
   async function buildBackup(withImg) {
     const images = {};
     if (withImg) for (const id of Object.keys(S.images)) images[id] = S.images[id];
-    return { app: 'darok', version: 1, exportedAt: new Date().toISOString(), ratings: S.ratings, favorites: S.favorites, brewed: S.brewed, userTeas: S.userTeas, settings: { theme: S.settings.theme, sound: S.settings.sound, method: S.settings.method, brewEdits: S.settings.brewEdits }, images };
+    return { app: 'darok', version: 1, exportedAt: new Date().toISOString(), ratings: S.ratings, favorites: S.favorites, brewed: S.brewed, notes: S.notes, userTeas: S.userTeas, settings: { theme: S.settings.theme, sound: S.settings.sound, method: S.settings.method, brewEdits: S.settings.brewEdits }, images };
   }
   function fileSheet(title, name, mime, text) {
     openSheet(`<div class="hd"><div><h2>${esc(title)}</h2><p class="muted" style="margin:0;font-size:13px">${esc(name)} · ${(new Blob([text]).size / 1024).toFixed(1)}KB</p></div><button class="iconbtn" data-act="close" aria-label="닫기">${I('close')}</button></div>
@@ -684,13 +691,13 @@
   }
   function csvOf() {
     const q = (s) => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
-    const rows = [['id', '이름', '원어', '분류', '국가', '지역', '별점', '평가일', '즐겨찾기', '우린 횟수', '사용자 추가'].map(q).join(',')];
-    ALL.filter((t) => S.ratings[t.id] || S.favorites[t.id] || S.brewed[t.id]).forEach((t) => { const r = S.ratings[t.id]; rows.push([t.id, t.nameKo, t.originalName, catOf(t).ko, t.country, t.region, r ? r.v : '', r ? new Date(r.t).toISOString().slice(0, 10) : '', S.favorites[t.id] ? 'Y' : '', S.brewed[t.id] ? S.brewed[t.id].n : '', t.builtin ? '' : 'Y'].map(q).join(',')); });
+    const rows = [['id', '이름', '원어', '분류', '국가', '지역', '별점', '평가일', '즐겨찾기', '우린 횟수', '메모', '사용자 추가'].map(q).join(',')];
+    ALL.filter((t) => S.ratings[t.id] || S.favorites[t.id] || S.brewed[t.id]).forEach((t) => { const r = S.ratings[t.id]; rows.push([t.id, t.nameKo, t.originalName, catOf(t).ko, t.country, t.region, r ? r.v : '', r ? new Date(r.t).toISOString().slice(0, 10) : '', S.favorites[t.id] ? 'Y' : '', S.brewed[t.id] ? S.brewed[t.id].n : '', S.notes[t.id] ? S.notes[t.id].text : '', t.builtin ? '' : 'Y'].map(q).join(',')); });
     return '﻿' + rows.join('\r\n');
   }
   let pendingImport = null;
   function validateBackup(o) {
-    const errs = [], out = { ratings: {}, favorites: {}, brewed: {}, userTeas: {}, images: {}, settings: null };
+    const errs = [], out = { ratings: {}, favorites: {}, brewed: {}, notes: {}, userTeas: {}, images: {}, settings: null };
     if (!o || typeof o !== 'object' || Array.isArray(o)) return { errs: ['JSON 최상위가 객체가 아닙니다.'] };
     if (o.app !== 'darok') errs.push('다록 백업 파일 표시(app: "darok")가 없습니다. 다른 앱의 파일일 수 있습니다.');
     let badR = 0, unknownR = 0;
@@ -702,6 +709,7 @@
       out.ratings[id] = { v, t: +r.t || Date.now() };
     }
     for (const [id, f] of Object.entries(o.favorites || {})) if (f && (D.byIdAll[id] || userIds.has(id))) out.favorites[id] = true;
+    for (const [id, n] of Object.entries(o.notes || {})) if (n && typeof n.text === 'string' && (D.byIdAll[id] || userIds.has(id))) out.notes[id] = { text: n.text.slice(0, 500), t: +n.t || Date.now() };
     for (const [id, b] of Object.entries(o.brewed || {})) if (b && (D.byIdAll[id] || userIds.has(id))) out.brewed[id] = { t: +b.t || Date.now(), n: Math.max(1, Math.min(9999, parseInt(b.n) || 1)) };
     let badU = 0;
     for (const [id, u] of Object.entries(o.userTeas || {})) {
@@ -726,17 +734,17 @@
     const dupName = Object.values(out.userTeas).filter((u) => D.teas.some((t) => norm(t.nameKo) === norm(u.nameKo))).map((u) => u.nameKo);
     pendingImport = out;
     area.innerHTML = `<div class="preview"><b>복원 미리보기</b>${o.exportedAt ? ` <span class="faint">(${esc(String(o.exportedAt).slice(0, 10))} 백업)</span>` : ''}
-      <ul><li>별점 ${nR}개 — 지금과 다른 값 ${conflict}개, 같은 값 ${same}개</li><li>즐겨찾기 ${Object.keys(out.favorites).length}개</li><li>우려 본 차 ${Object.keys(out.brewed).length}개</li><li>사용자 추가 차 ${nU}개 — 이미 있는 ID ${dupU}개${dupName.length ? `, 기본 도감과 이름이 같은 차: ${esc(dupName.join(', '))}` : ''}</li><li>사진 ${Object.keys(out.images).length}장</li>${out.settings ? '<li>설정 포함</li>' : ''}</ul>
+      <ul><li>별점 ${nR}개 — 지금과 다른 값 ${conflict}개, 같은 값 ${same}개</li><li>즐겨찾기 ${Object.keys(out.favorites).length}개</li><li>우려 본 차 ${Object.keys(out.brewed).length}개</li><li>메모 ${Object.keys(out.notes).length}개</li><li>사용자 추가 차 ${nU}개 — 이미 있는 ID ${dupU}개${dupName.length ? `, 기본 도감과 이름이 같은 차: ${esc(dupName.join(', '))}` : ''}</li><li>사진 ${Object.keys(out.images).length}장</li>${out.settings ? '<li>설정 포함</li>' : ''}</ul>
       ${errs.length ? `<p class="err" style="margin:8px 0 0">${errs.map(esc).join('<br>')}</p>` : ''}
       <div class="row" style="margin-top:12px"><button class="btn pri" data-act="import-merge">합치기 (백업 값 우선)</button><button class="btn" data-act="import-replace">모두 바꾸기</button><button class="btn ghost" data-act="import-cancel">취소</button></div></div>`;
   }
   async function applyImport(replace) {
     const o = pendingImport; if (!o) return;
-    if (replace) { S.ratings = {}; S.favorites = {}; S.brewed = {}; S.userTeas = {}; for (const id of Object.keys(S.images)) await Store.del(id, 'images'); S.images = {}; }
-    Object.assign(S.ratings, o.ratings); Object.assign(S.favorites, o.favorites); Object.assign(S.brewed, o.brewed); Object.assign(S.userTeas, o.userTeas);
+    if (replace) { S.ratings = {}; S.favorites = {}; S.brewed = {}; S.notes = {}; S.userTeas = {}; for (const id of Object.keys(S.images)) await Store.del(id, 'images'); S.images = {}; }
+    Object.assign(S.ratings, o.ratings); Object.assign(S.favorites, o.favorites); Object.assign(S.brewed, o.brewed); Object.assign(S.notes, o.notes); Object.assign(S.userTeas, o.userTeas);
     for (const [id, img] of Object.entries(o.images)) { S.images[id] = img; await Store.set(id, img, 'images').catch(() => {}); }
     if (o.settings) { S.settings = Object.assign(S.settings, o.settings); applyTheme(); }
-    await Promise.all([save.ratings(), save.favorites(), save.brewed(), save.userTeas(), save.settings()]);
+    await Promise.all([save.ratings(), save.favorites(), save.brewed(), save.notes(), save.userTeas(), save.settings()]);
     pendingImport = null; rebuild(); render(); toast('복원했습니다.');
   }
 
@@ -976,7 +984,7 @@
         case 'wipe': $('[data-wipe-area]').innerHTML = `<div class="preview"><p style="margin:0 0 8px">별점 ${Object.keys(S.ratings).length}개, 즐겨찾기 ${Object.keys(S.favorites).length}개, 우려 본 차 ${Object.keys(S.brewed).length}개, 추가한 차 ${Object.keys(S.userTeas).length}개, 사진 ${Object.keys(S.images).length}장을 지웁니다. 확인하려면 <b>삭제</b>라고 입력하십시오.</p><div class="row"><input type="text" id="wipe-in" style="max-width:160px" aria-label="확인 문구"><button class="btn danger" data-act="wipe-go">${I('trash', 'sm')} 지우기</button><button class="btn ghost" data-act="wipe-cancel">취소</button></div></div>`; $('#wipe-in').focus(); return;
         case 'wipe-cancel': $('[data-wipe-area]').innerHTML = ''; return;
         case 'wipe-go': if (($('#wipe-in').value || '').trim() !== '삭제') { toast('"삭제"라고 정확히 입력하십시오.'); return; }
-          Store.clearAll().then(() => { S.ratings = {}; S.favorites = {}; S.brewed = {}; S.userTeas = {}; S.images = {}; S.compare = []; S.settings = { theme: 'system', sound: true, method: '', brewEdits: {} }; applyTheme(); rebuild(); render(); toast('사용자 데이터를 모두 지웠습니다.'); }); return;
+          Store.clearAll().then(() => { S.ratings = {}; S.favorites = {}; S.brewed = {}; S.notes = {}; S.userTeas = {}; S.images = {}; S.compare = []; Sync.disconnect(); S.settings = { theme: 'system', sound: true, method: '', brewEdits: {} }; applyTheme(); rebuild(); render(); toast('사용자 데이터를 모두 지웠습니다.'); }); return;
       }
     }
     if (open) {
@@ -984,6 +992,8 @@
       if (open.dataset.closeFirst) closeSheet();
       go('detail', { id: open.dataset.open }); return;
     }
+    const sg = t.closest('[data-shared-go]'); if (sg) { S.mine.tab = 'shared'; go('mine'); return; }
+    const sy = t.closest('[data-sync]'); if (sy) { Sync.action(sy.dataset.sync); return; }
     const tab = t.closest('[data-tab]'); if (tab) { S.stack = []; go(tab.dataset.tab, null, { replace: true }); return; }
     const tg = t.closest('[data-tab-go]'); if (tg) { go(tg.dataset.tabGo); return; }
     const ex = t.closest('[data-explore]'); if (ex) { const p = EXPLORE[+ex.dataset.explore][3]; Object.assign(S.cat, { q: '', cats: new Set(p.cats || []), countries: new Set(p.countries || []), regions: new Set(), rated: 'all', minR: 0, fav: false, sort: 'name' }); go('catalog'); return; }
@@ -1018,8 +1028,116 @@
     if (f.dataset.form === 'catsearch') { e.preventDefault(); S.cat.q = $('#cat-q').value; renderList(true); $('#cat-q').blur(); }
   }
   function onChange(e) {
+    if (e.target.matches('[data-note]')) { const id = e.target.dataset.note, v = e.target.value.trim().slice(0, 500); if (v) S.notes[id] = { text: v, t: Date.now() }; else delete S.notes[id]; save.notes(); toast(v ? '메모를 저장했습니다.' : '메모를 지웠습니다.'); }
     if (e.target.matches('[data-sort]')) { S.cat.sort = e.target.value; renderList(true); }
     if (e.target.matches('[data-mine-sort]')) { S.mine.sort = e.target.value; const y = window.scrollY; render(); window.scrollTo(0, y); }
+  }
+
+    /* ───────── GitHub 기록 공유 ─────────
+     토큰은 이 브라우저의 localStorage에만 저장합니다(백업·코드에 포함하지 않음).
+     기록 파일에는 별점·메모·우려 본 차·즐겨찾기·추가한 차가 들어가며 사진은 넣지 않습니다. */
+  const Sync = (function () {
+    const KEY = 'darok-github';
+    const DEF = { repo: 'Charaing/darok', branch: 'main', path: 'records/charaing.json', name: 'Charaing', token: '', auto: true };
+    let status = '', busy = false, lastSent = '', timer = 0;
+    const cfg = () => { try { return Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEF); } };
+    const setCfg = (c) => { try { localStorage.setItem(KEY, JSON.stringify(c)); return true; } catch (e) { toast('이 브라우저에서는 설정을 저장할 수 없습니다.'); return false; } };
+    const b64 = (str) => { const bytes = new TextEncoder().encode(str); let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); };
+    const validRepo = (r) => /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(r);
+    const validPath = (p) => /^[A-Za-z0-9_./-]+\.json$/.test(p) && !p.includes('..');
+    function payload() {
+      const c = cfg();
+      return { app: 'darok', kind: 'shared-records', version: 1, owner: c.name, updatedAt: new Date().toISOString(), ratings: S.ratings, notes: S.notes, brewed: S.brewed, favorites: S.favorites, userTeas: S.userTeas };
+    }
+    function setStatus(m) { status = m; const el = $('[data-sync-status]'); if (el) el.textContent = m; }
+    async function push(force) {
+      const c = cfg();
+      if (!c.token || !validRepo(c.repo) || !validPath(c.path)) return;
+      const body = payload(); const cmp = JSON.stringify(Object.assign({}, body, { updatedAt: '' }));
+      if (!force && cmp === lastSent) return;
+      if (busy) { schedule(); return; }
+      busy = true; setStatus('GitHub에 올리는 중…');
+      const url = `https://api.github.com/repos/${c.repo}/contents/${c.path.split('/').map(encodeURIComponent).join('/')}`;
+      const h = { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+      try {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          let sha;
+          const g = await fetch(url + '?ref=' + encodeURIComponent(c.branch), { headers: h, cache: 'no-store' });
+          if (g.ok) sha = (await g.json()).sha;
+          else if (g.status !== 404) throw new Error(g.status === 401 ? '토큰이 올바르지 않거나 만료되었습니다.' : g.status === 403 ? '토큰에 이 저장소의 Contents 쓰기 권한이 없습니다.' : '저장소를 읽지 못했습니다 (' + g.status + ').');
+          const p = await fetch(url, { method: 'PUT', headers: h, body: JSON.stringify(Object.assign({ message: '다록 기록 업데이트', content: b64(JSON.stringify(body, null, 1)), branch: c.branch }, sha ? { sha } : {})) });
+          if (p.ok) { lastSent = cmp; setStatus('마지막으로 올린 시각: ' + new Date().toLocaleTimeString('ko-KR') + ' · 사이트에 반영되기까지 1~2분 걸릴 수 있습니다.'); return true; }
+          if (p.status === 409 && attempt === 0) continue;
+          throw new Error(p.status === 401 ? '토큰이 올바르지 않거나 만료되었습니다.' : p.status === 403 || p.status === 404 ? '토큰에 이 저장소의 Contents 쓰기 권한이 없거나 저장소 이름이 틀렸습니다.' : p.status === 422 ? '브랜치 이름이나 파일 경로를 확인하십시오.' : '올리지 못했습니다 (' + p.status + ').');
+        }
+      } catch (e) {
+        setStatus('올리지 못했습니다: ' + (e && e.message && !/fetch/i.test(e.message) ? e.message : '네트워크에 연결할 수 없거나 이 화면에서 GitHub 접속이 막혀 있습니다.'));
+        return false;
+      } finally { busy = false; }
+    }
+    function schedule() { const c = cfg(); if (!c.token || !c.auto) return; clearTimeout(timer); timer = setTimeout(() => push(false), 4000); }
+    async function loadShared() {
+      const c = cfg();
+      const urls = [];
+      if (/github\.io$/.test(location.hostname)) urls.push(c.path + '?t=' + Date.now());
+      if (validRepo(c.repo) && validPath(c.path)) urls.push(`https://raw.githubusercontent.com/${c.repo}/${encodeURIComponent(c.branch)}/${c.path}?t=${Date.now()}`);
+      for (const u of urls) {
+        try {
+          const r = await fetch(u, { cache: 'no-store' }); if (!r.ok) continue;
+          const o = await r.json(); if (!o || o.app !== 'darok' || o.kind !== 'shared-records') continue;
+          const { out } = validateBackup(Object.assign({}, o, { app: 'darok' }), true);
+          if (!out) continue;
+          S.shared = { owner: String(o.owner || '').slice(0, 40), updatedAt: String(o.updatedAt || ''), ratings: out.ratings, notes: out.notes, brewed: out.brewed, userTeas: out.userTeas };
+          rebuild(); if (['home', 'mine', 'detail'].includes(S.view.name)) { const y = window.scrollY; render(); window.scrollTo(0, y); }
+          return true;
+        } catch (e) { /* 다음 주소 시도 */ }
+      }
+      return false;
+    }
+    function settingsHtml() {
+      const c = cfg(), connected = !!c.token;
+      return `<section class="sec"><div class="sec-h"><h2>GitHub에 기록 올리기</h2>${connected ? '<span class="pill user">연결됨</span>' : '<span class="pill">연결 안 됨</span>'}</div>
+        <p style="font-size:14px;max-width:70ch;margin:0 0 10px">별점·메모·우려 본 차·즐겨찾기·추가한 차를 GitHub 저장소의 JSON 파일로 자동으로 올립니다. 이 사이트를 여는 모든 사람이 그 기록을 "공유된 기록"으로 볼 수 있습니다. 사진은 올리지 않습니다.</p>
+        <div class="grid2" style="max-width:640px">
+          <label class="f">표시 이름<input type="text" id="gh-name" maxlength="40" value="${esc(c.name)}"></label>
+          <label class="f">저장소 (소유자/이름)<input type="text" id="gh-repo" value="${esc(c.repo)}"></label>
+          <label class="f">브랜치<input type="text" id="gh-branch" value="${esc(c.branch)}"></label>
+          <label class="f">기록 파일 경로<input type="text" id="gh-path" value="${esc(c.path)}"></label>
+          <label class="f" style="grid-column:1/-1">GitHub 토큰 ${connected ? '(저장됨 — 바꾸려면 새로 입력)' : ''}<input type="password" id="gh-token" autocomplete="off" placeholder="${connected ? '••••••••' : 'github_pat_로 시작하는 토큰'}"></label>
+        </div>
+        <label class="row" style="gap:8px;font-size:14px;margin-top:10px"><input type="checkbox" id="gh-auto" ${c.auto ? 'checked' : ''}> 기록이 바뀌면 자동으로 올리기</label>
+        <div class="row" style="margin-top:12px"><button class="btn pri" data-sync="save">설정 저장</button><button class="btn" data-sync="push" ${connected ? '' : 'disabled'}>${I('upload', 'sm')} 지금 올리기</button><button class="btn" data-sync="reload">${I('reset', 'sm')} 공유 기록 다시 불러오기</button>${connected ? '<button class="btn danger" data-sync="disconnect">토큰 삭제</button>' : ''}</div>
+        <p class="muted" style="font-size:13px" data-sync-status>${esc(status || (S.shared ? `공유 기록을 불러왔습니다 (${esc(S.shared.owner)}, 별점 ${Object.keys(S.shared.ratings).length}개).` : '아직 불러온 공유 기록이 없습니다.'))}</p>
+        <details class="adv"><summary>토큰 만드는 방법</summary><ol style="font-size:14px;margin:0;padding-left:20px;max-width:70ch">
+          <li>GitHub에서 Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token을 엽니다.</li>
+          <li>Repository access에서 "Only select repositories"를 고르고 이 저장소(${esc(c.repo)})만 선택합니다.</li>
+          <li>Permissions의 Repository permissions에서 <b>Contents</b>를 "Read and write"로 바꿉니다. 다른 권한은 주지 마십시오.</li>
+          <li>만든 토큰을 위 칸에 붙여 넣고 "설정 저장"을 누릅니다.</li></ol>
+          <p class="disclaim">토큰은 이 브라우저에만 저장되고 백업 파일에도 들어가지 않습니다. 다른 사람과 같이 쓰는 컴퓨터에서는 사용 후 "토큰 삭제"를 누르십시오. 저장소가 공개라면 올린 기록은 누구나 볼 수 있습니다.</p></details>
+      </section>`;
+    }
+    async function action(a) {
+      const c = cfg();
+      if (a === 'save') {
+        const v = (id) => ($('#' + id).value || '').trim();
+        const n = { name: v('gh-name') || DEF.name, repo: v('gh-repo'), branch: v('gh-branch') || 'main', path: v('gh-path'), token: v('gh-token') || c.token, auto: $('#gh-auto').checked };
+        if (!validRepo(n.repo)) { setStatus('저장소는 "소유자/이름" 형식으로 입력하십시오.'); return; }
+        if (!validPath(n.path)) { setStatus('기록 파일 경로는 영문·숫자로 된 .json 파일이어야 합니다. 예: records/charaing.json'); return; }
+        if (!setCfg(n)) return;
+        const y = window.scrollY; render(); window.scrollTo(0, y);
+        if (n.token) { const ok = await push(true); if (ok) { toast('GitHub에 올렸습니다.'); setTimeout(loadShared, 1500); } } else setStatus('설정을 저장했습니다. 토큰을 넣으면 올리기가 시작됩니다.');
+      } else if (a === 'push') { const ok = await push(true); if (ok) toast('GitHub에 올렸습니다.'); }
+      else if (a === 'reload') { setStatus('불러오는 중…'); const ok = await loadShared(); setStatus(ok ? `공유 기록을 불러왔습니다 (${S.shared.owner}, 별점 ${Object.keys(S.shared.ratings).length}개).` : '공유 기록을 불러오지 못했습니다. 아직 올린 기록이 없거나 이 화면에서 GitHub 접속이 막혀 있습니다.'); }
+      else if (a === 'disconnect') { disconnect(); const y = window.scrollY; render(); window.scrollTo(0, y); toast('이 브라우저에서 토큰을 삭제했습니다.'); }
+    }
+    function disconnect() { const c = cfg(); c.token = ''; setCfg(c); lastSent = ''; status = ''; }
+    return { schedule, push, loadShared, settingsHtml, action, disconnect, on: () => { const c = cfg(); return !!(c.token && c.auto); } };
+  })();
+  function sharedLine(id) {
+    if (!S.shared) return '';
+    const r = S.shared.ratings[id], n = S.shared.notes && S.shared.notes[id];
+    if (!r && !n) return '';
+    return `<div class="sharedbox"><div class="eyebrow" style="text-transform:none;letter-spacing:.06em">${esc(S.shared.owner || '공유 기록')}의 기록</div>${r ? `<div class="rateline">${starsView(r.v, true)}<b class="num">${r.v.toFixed(1)}</b><span class="faint" style="font-size:12.5px">${new Date(r.t).toLocaleDateString('ko-KR')}</span></div>` : ''}${n ? `<p style="margin:6px 0 0">${esc(n.text)}</p>` : ''}</div>`;
   }
 
   /* ───────── 시작 ───────── */
@@ -1027,6 +1145,7 @@
     await Store.init();
     const [r, f, u, st, bw] = await Promise.all([Store.get('ratings'), Store.get('favorites'), Store.get('userTeas'), Store.get('settings'), Store.get('brewed')]);
     S.brewed = bw && typeof bw === 'object' ? bw : {};
+    const nt = await Store.get('notes'); S.notes = nt && typeof nt === 'object' ? nt : {};
     S.ratings = r && typeof r === 'object' ? r : {}; S.favorites = f && typeof f === 'object' ? f : {};
     S.userTeas = {}; if (u && typeof u === 'object') for (const [id, x] of Object.entries(u)) S.userTeas[id] = sanitizeUserTea(Object.assign({}, x, { id }));
     if (st && typeof st === 'object') S.settings = Object.assign(S.settings, st, { brewEdits: st.brewEdits || {} });
@@ -1037,6 +1156,7 @@
     if (['catalog', 'mine', 'knowledge', 'settings'].includes(h)) S.view = { name: h };
     else if (h && D.byIdAll[h]) S.view = { name: 'detail', id: h };
     render();
+    Sync.loadShared();
     window.addEventListener('hashchange', () => { const k = location.hash.slice(1); if (D.byIdAll[k]) go('detail', { id: k }); else if (['catalog', 'mine', 'knowledge', 'settings', 'home'].includes(k)) go(k); });
     if (D.errors.length) console.warn('[다록 데이터 점검]', D.errors);
   }

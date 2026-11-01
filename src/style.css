@@ -343,3 +343,5 @@ details.adv[open] summary { margin-bottom: 12px; }
 .pend { display: flex; justify-content: space-between; align-items: center; gap: 10px 16px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .pend b { font-family: var(--f-display); font-weight: 600; }
 .pend .stars .s { width: 28px; height: 28px; } .pend .stars .s .fill svg { width: 28px; height: 28px; } .pend .rateval { font-size: 20px; }
+.sharedbox { margin-top: 18px; padding: 12px 14px; border: 1px solid var(--line); border-left: 3px solid var(--brown); border-radius: 8px; background: var(--paper); max-width: 560px; }
+.sharednote { margin: -6px 0 6px 28px; font-size: 13px; color: var(--fg2); }
