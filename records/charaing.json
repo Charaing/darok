@@ -3,8 +3,12 @@
  "kind": "shared-records",
  "version": 1,
  "owner": "Charaing",
- "updatedAt": "2026-11-01T07:46:51.190Z",
+ "updatedAt": "2026-11-07T08:58:50.372Z",
  "ratings": {
+  "cn-dahongpao": {
+   "v": 3,
+   "t": 1793518921612
+  },
   "cn-tieluohan": {
    "v": 5,
    "t": 1793518901889
@@ -31,6 +35,10 @@
   }
  },
  "notes": {
+  "cn-dahongpao": {
+   "text": "그저그럼",
+   "t": 1793521010688
+  },
   "cn-tieluohan": {
    "text": "이거 지린다이",
    "t": 1793518901811
@@ -56,9 +64,25 @@
    "t": 1793519142098
   }
  },
- "brewed": {},
- "favorites": {
-  "cn-fenghuang-dancong": true
+ "brewed": {
+  "cn-dahongpao": {
+   "t": 1793518886394,
+   "n": 1
+  },
+  "cn-wuyi-rougui": {
+   "t": 1794041925744,
+   "n": 1
+  }
  },
- "userTeas": {}
+ "favorites": {
+  "cn-fenghuang-dancong": 1
+ },
+ "userTeas": {},
+ "deleted": {
+  "userTeas": {},
+  "ratings": {},
+  "notes": {},
+  "brewed": {},
+  "favorites": {}
+ }
 }
